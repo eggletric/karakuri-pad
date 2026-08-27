@@ -1,0 +1,161 @@
+{
+    "name": "karakuri-pad",
+    "version": "1.0.0",
+    "main": "electron/main.js",
+    "scripts": {
+        "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
+        "dev:renderer": "vite --config vite.config.js",
+        "dev:electron": "wait-on http://localhost:5173 && electron .",
+        "build:icons": "node scripts/gen-icons.mjs",
+        "build:licenses": "node scripts/collect-licenses.js",
+        "prebuilds:collect": "node scripts/native-prebuilds.mjs collect",
+        "prebuilds:restore": "node scripts/native-prebuilds.mjs restore",
+        "dist:build": "yarn build:licenses && vite build",
+        "dist": "yarn dist:build && electron-builder --publish never",
+        "dist:mac": "yarn dist:build && yarn prune:native darwin && electron-builder --mac --publish never",
+        "dist:win": "yarn dist:build && yarn prune:native win32 && electron-builder --win --publish never",
+        "dist:linux": "yarn dist:build && yarn prune:native linux && electron-builder --linux --publish never",
+        "release": "yarn dist:build && electron-builder --publish always",
+        "prune:native": "node scripts/prune-native.mjs"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^5.2.0",
+        "@xterm/xterm": "^5.5.0",
+        "concurrently": "^8.2.0",
+        "electron": "^43.4.1",
+        "electron-builder": "^26.15.3",
+        "playwright": "^1.62.1",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "react-icons": "^5.5.0",
+        "vite": "^7.3.6",
+        "wait-on": "^7.2.0"
+    },
+    "dependencies": {
+        "@stoprocent/noble": "^2.8.0",
+        "@xterm/addon-fit": "^0.11.0",
+        "electron-updater": "^6.8.9",
+        "i18next": "^26.4.0",
+        "node-hid": "^2.1.2",
+        "react-i18next": "^17.0.12",
+        "serialport": "^13.0.0"
+    },
+    "license": "MIT",
+    "description": "Macro controller editor for the Pico W / Pico 2 W",
+    "author": "Eggletric <karchz0101@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eggletric/karakuri-pad.git"
+    },
+    "build": {
+        "appId": "io.github.eggletric.karakuripad",
+        "productName": "Karakuri Pad",
+        "copyright": "Copyright (c) 2026 Eggletric",
+        "directories": {
+            "output": "release",
+            "buildResources": "build"
+        },
+        "files": [
+            "dist/**/*",
+            "electron/**/*",
+            "node_modules/**/*",
+            "package.json",
+            "LICENSE",
+            "THIRD-PARTY-LICENSES.txt",
+            "!node_modules/@serialport/bindings-cpp/prebuilds/android-*/**",
+            "!node_modules/**/{test,tests,__tests__,example,examples}/**",
+            "!node_modules/**/.eslintcache",
+            "!node_modules/usb/libusb/**"
+        ],
+        "asarUnpack": [
+            "**/*.node",
+            "node_modules/@stoprocent/**",
+            "node_modules/node-hid/**",
+            "node_modules/serialport/**"
+        ],
+        "publish": {
+            "provider": "github",
+            "owner": "eggletric",
+            "repo": "karakuri-pad"
+        },
+        "mac": {
+            "category": "public.app-category.utilities",
+            "icon": "build/icon-mac.png",
+            "target": [
+                {
+                    "target": "dmg",
+                    "arch": [
+                        "arm64",
+                        "x64"
+                    ]
+                },
+                {
+                    "target": "zip",
+                    "arch": [
+                        "arm64",
+                        "x64"
+                    ]
+                }
+            ],
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "entitlements": "build/entitlements.mac.plist",
+            "entitlementsInherit": "build/entitlements.mac.plist",
+            "notarize": true,
+            "artifactName": "${name}-mac-${arch}.${ext}",
+            "extendInfo": {
+                "NSBluetoothAlwaysUsageDescription": "Bluetooth is used to record input from a Pro Controller 2.",
+                "NSBluetoothPeripheralUsageDescription": "Bluetooth is used to record input from a Pro Controller 2."
+            }
+        },
+        "win": {
+            "icon": "build/icon-win.png",
+            "target": [
+                {
+                    "target": "nsis",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                }
+            ],
+            "artifactName": "${name}-setup-${arch}.${ext}"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": true
+        },
+        "linux": {
+            "icon": "build/icon.png",
+            "category": "Utility",
+            "maintainer": "Eggletric <karchz0101@gmail.com>",
+            "synopsis": "Macro controller editor for the Pico W / Pico 2 W",
+            "target": [
+                {
+                    "target": "AppImage",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                },
+                {
+                    "target": "deb",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                },
+                {
+                    "target": "rpm",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                }
+            ],
+            "artifactName": "${name}-linux-${arch}.${ext}"
+        },
+        "npmRebuild": false
+    }
+}

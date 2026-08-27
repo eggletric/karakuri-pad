@@ -1,0 +1,232 @@
+name: Release
+
+# Pushing a v* tag builds every platform and uploads the artifacts into a draft release on this
+# repository. A human publishes the draft once all legs are green, which keeps a broken build
+# from ever reaching electron-updater (a draft is invisible to it).
+#
+# workflow_dispatch runs the same build without publishing, for checking one leg in isolation.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      leg:
+        description: 'Which leg to build (never publishes)'
+        type: choice
+        default: all
+        options: [all, mac, win-x64, win-arm64, linux-x64, linux-arm64]
+
+permissions:
+  contents: write
+
+env:
+  # Publishing goes to this repository's own releases, so the built-in token is enough
+  # (diffy-pick needs a dedicated PAT only because its releases live in another repository).
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  # A job-level `if` cannot see the matrix context, so the leg selection is expanded here
+  # instead of being repeated as a condition on every step.
+  plan:
+    name: Plan legs
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+      tag: ${{ steps.pick.outputs.tag }}
+      publish: ${{ steps.pick.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick legs and verify the tag
+        id: pick
+        run: |
+          # macOS builds both arches in one leg, so latest-mac.yml is written once and needs no
+          # merge afterwards. It runs on the self-hosted Mac, where the Developer ID identity is
+          # already installed in the System keychain.
+          # Windows and Linux split by arch because the native modules (node-hid / serialport /
+          # noble) cannot be cross-compiled — each arch has to build on its own runner.
+          BASE='[
+            {"leg":"mac","os":["self-hosted","macos","release"],"platform":"darwin","args":"--mac"},
+            {"leg":"win-x64","os":"windows-2022","platform":"win32","args":"--win nsis --x64"},
+            {"leg":"win-arm64","os":"windows-11-arm","platform":"win32","args":"--win nsis --arm64"},
+            {"leg":"linux-x64","os":"ubuntu-22.04","platform":"linux","args":"--linux AppImage deb rpm --x64"},
+            {"leg":"linux-arm64","os":"ubuntu-22.04-arm","platform":"linux","args":"--linux AppImage deb rpm --arm64"}
+          ]'
+          LEG='${{ inputs.leg }}'
+          if [ -z "$LEG" ] || [ "$LEG" = "all" ]; then
+            M=$(jq -c '.' <<<"$BASE")
+          else
+            M=$(jq -c --arg l "$LEG" '[.[] | select(.leg == $l)]' <<<"$BASE")
+          fi
+          echo "matrix=${M}" >> "$GITHUB_OUTPUT"
+
+          # Only a tag push publishes.
+          case "${GITHUB_REF}" in
+            refs/tags/v*)
+              TAG="${GITHUB_REF#refs/tags/}"
+              # The tag and package.json version must agree: electron-updater compares the
+              # version baked into the app against the feed, so a mismatch produces an update
+              # that installs and then still reports itself as out of date.
+              PKG="v$(node -p "require('./package.json').version")"
+              if [ "$TAG" != "$PKG" ]; then
+                echo "::error::tag ${TAG} does not match package.json version ${PKG}"
+                exit 1
+              fi
+              echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  create-draft:
+    name: Create draft release
+    needs: [plan]
+    if: ${{ needs.plan.outputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      # Created up front so every leg uploads into one release. Re-running the workflow for the
+      # same tag reuses the existing draft rather than failing.
+      - name: Create draft (reuse if it already exists)
+        run: |
+          TAG="${{ needs.plan.outputs.tag }}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "a release for $TAG already exists, reusing it"
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "$TAG" --generate-notes
+          fi
+
+  build:
+    name: Build - ${{ matrix.leg }}
+    needs: [plan, create-draft]
+    # create-draft is skipped on a non-publishing run, and a skipped dependency must not fail
+    # this job.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.plan.outputs.publish != 'true' || needs.create-draft.result == 'success') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The self-hosted Mac keeps its workspace between runs, so the remote yarn cache buys
+      # nothing there and only adds an untimed blob download.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: ${{ matrix.leg != 'mac' && 'yarn' || '' }}
+
+      # rpm: fpm needs rpmbuild to produce the .rpm.
+      # libudev-dev: the usb dependency behind @stoprocent/bluetooth-hci-socket compiles against it.
+      - name: Install linux build deps
+        if: startsWith(matrix.leg, 'linux')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm libudev-dev
+
+      # win32-arm64 is the one arch @stoprocent publishes no prebuild for, so noble is built
+      # from source there and needs a Visual Studio that node-gyp can find. windows-latest
+      # (Server 2025) carries VS 18, which no released node-gyp detects — hence the windows-2022
+      # pin above. A current node-gyp is installed anyway, so the pin can be lifted later.
+      - name: Use a current node-gyp (windows)
+        if: startsWith(matrix.leg, 'win')
+        shell: bash
+        run: |
+          npm install -g node-gyp@latest
+          echo "npm_config_node_gyp=$(npm prefix -g)/node_modules/node-gyp/bin/node-gyp.js" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --network-timeout 300000
+
+      # Fails fast on a missing secret or a broken identity, rather than after a ten minute
+      # build. electron-builder reads CSC_IDENTITY_AUTO_DISCOVERY=false plus an explicit
+      # CSC_NAME as "do not search, use exactly this one".
+      - name: Prepare mac signing and notarization
+        if: matrix.leg == 'mac'
+        shell: bash
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY_B64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          missing=0
+          for v in APPLE_API_KEY_B64 APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            if [ -z "${!v}" ]; then
+              echo "::error::notarization secret ${v} is not set. Add it to the repository secrets."
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+          echo "--- find-identity -v -p codesigning ---"
+          security find-identity -v -p codesigning
+          FOUND=$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application:/ {print $2; exit}')
+          if [ -z "$FOUND" ]; then
+            echo "::error::no Developer ID Application identity in the System keychain"
+            exit 1
+          fi
+          echo "valid identity: ${FOUND}"
+          KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 -d > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          {
+            echo "CSC_NAME=${FOUND#Developer ID Application: }"
+            echo "APPLE_API_KEY=${KEY_PATH}"
+            echo "APPLE_API_KEY_ID=${APPLE_API_KEY_ID}"
+            echo "APPLE_API_ISSUER=${APPLE_API_ISSUER}"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false"
+          } >> "$GITHUB_ENV"
+
+      # Windows ships unsigned, so nothing is set up for it (see the SmartScreen note in the README).
+      # prune-native drops the prebuilds and Linux-only packages this leg will never load; the
+      # dependencies ship binaries for every platform in one tarball, which is ~10MB of dead
+      # weight per package otherwise.
+      - name: Build and publish
+        shell: bash
+        run: |
+          yarn dist:build
+          node scripts/prune-native.mjs ${{ matrix.platform }}
+          if [ "${{ needs.plan.outputs.publish }}" = "true" ]; then
+            npx electron-builder ${{ matrix.args }} --publish always
+          else
+            npx electron-builder ${{ matrix.args }} --publish never
+          fi
+
+      # Checks the signature and the notarization by machine, so "shipped unsigned" or "the
+      # notarization silently failed" turns the leg red before anyone publishes the draft.
+      - name: Verify mac signature and notarization
+        if: matrix.leg == 'mac'
+        shell: bash
+        run: |
+          shopt -s nullglob
+          apps=(release/mac*/*.app)
+          if [ "${#apps[@]}" -eq 0 ]; then
+            echo "::error::no .app under release/ (the mac output layout may have changed)"
+            exit 1
+          fi
+          for app in "${apps[@]}"; do
+            echo "== ${app}"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            xcrun stapler validate "$app"
+            spctl -a -t exec -vv "$app"
+          done
+
+  # The two arch legs of Windows, and those of Linux, each read-modify-write the same
+  # latest*.yml, so one overwrites the other's entry. Rebuild both files from what actually
+  # landed on the release, once every leg has finished.
+  merge-latest-yml:
+    name: Merge latest.yml - ${{ matrix.platform }}
+    needs: [plan, build]
+    if: ${{ needs.plan.outputs.publish == 'true' && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [win, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/merge-latest-yml.mjs "${{ needs.plan.outputs.tag }}" "${{ matrix.platform }}"

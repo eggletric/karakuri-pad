@@ -1,0 +1,128 @@
+name: Collect native prebuilds
+
+# Builds the native modules on every platform and arch, and publishes the compiled .node files
+# as a single artifact. Download it, unpack it over vendor/native-prebuilds/ and commit the
+# result — that is the safety net for the day one of them stops compiling
+# (see docs/RELEASE.md, "Native prebuilds").
+#
+# This is manual and rare: everything here is N-API, so the files stay valid across Electron
+# upgrades and only need regenerating when one of the packages is updated.
+on:
+  workflow_dispatch:
+    inputs:
+      legs:
+        description: 'Which legs to build'
+        type: choice
+        default: all
+        options: [all, no-mac, mac, win-x64, win-arm64, linux-x64, linux-arm64]
+
+permissions:
+  contents: read
+
+jobs:
+  # A job-level `if` cannot see the matrix context, so the leg selection is expanded here.
+  # "no-mac" exists because the self-hosted Mac is not registered against this repository — the
+  # macOS files can be collected locally instead (see docs/RELEASE.md).
+  plan:
+    name: Plan legs
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        run: |
+          BASE='[
+            {"leg":"mac","os":["self-hosted","macos","release"],"archs":"x64 arm64"},
+            {"leg":"win-x64","os":"windows-2022"},
+            {"leg":"win-arm64","os":"windows-11-arm"},
+            {"leg":"linux-x64","os":"ubuntu-22.04"},
+            {"leg":"linux-arm64","os":"ubuntu-22.04-arm"}
+          ]'
+          case "${{ inputs.legs }}" in
+            all|"") M=$(jq -c '.' <<<"$BASE") ;;
+            no-mac) M=$(jq -c '[.[] | select(.leg != "mac")]' <<<"$BASE") ;;
+            *)      M=$(jq -c --arg l "${{ inputs.legs }}" '[.[] | select(.leg == $l)]' <<<"$BASE") ;;
+          esac
+          echo "matrix=${M}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build - ${{ matrix.leg }}
+    needs: [plan]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: ${{ matrix.leg != 'mac' && 'yarn' || '' }}
+
+      # libudev-dev: the usb dependency behind @stoprocent/bluetooth-hci-socket compiles against it
+      - name: Install linux build deps
+        if: startsWith(matrix.leg, 'linux')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev
+
+      # win32-arm64 is the one arch @stoprocent publishes no prebuild for, so noble is built
+      # from source there and needs a Visual Studio that node-gyp can find. windows-latest
+      # (Server 2025) carries VS 18, which no released node-gyp detects — hence the windows-2022
+      # pin above. A current node-gyp is installed anyway, so the pin can be lifted later.
+      - name: Use a current node-gyp (windows)
+        if: startsWith(matrix.leg, 'win')
+        shell: bash
+        run: |
+          npm install -g node-gyp@latest
+          echo "npm_config_node_gyp=$(npm prefix -g)/node_modules/node-gyp/bin/node-gyp.js" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --network-timeout 300000
+
+      # On macOS the host is always arm64, so each arch is rebuilt in turn and filed under an
+      # explicit tuple. Elsewhere the host arch is the target arch and the default is correct.
+      - name: Collect
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.archs }}" ]; then
+            for arch in ${{ matrix.archs }}; do
+              npx electron-builder install-app-deps --arch="$arch"
+              node scripts/native-prebuilds.mjs collect --tuple "darwin-${arch}"
+            done
+          else
+            node scripts/native-prebuilds.mjs collect
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilds-${{ matrix.leg }}
+          path: vendor/native-prebuilds
+          if-no-files-found: error
+
+  # Merge every leg's tree into one artifact. The legs never collide: each writes only its own
+  # <platform>-<arch> directories.
+  merge:
+    name: Merge into one artifact
+    needs: [plan, build]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-prebuilds-*
+          merge-multiple: true
+          path: native-prebuilds
+
+      - name: Show what was collected
+        run: |
+          find native-prebuilds -type f | sort
+          echo "---"
+          du -sh native-prebuilds
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilds
+          path: native-prebuilds
+          if-no-files-found: error

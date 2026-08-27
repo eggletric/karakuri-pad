@@ -1,0 +1,3812 @@
+/* ===========================
+ * Global base & variables
+ * ========================= */
+
+:root {
+    /* Three background layers: base (deepest / header) < surface (page) < raised (cards) */
+    --bg-base: #06080e;
+    --bg-surface: #0d1220;
+    --bg-raised: #141b2d;
+    --bg-hover: #1b2440;
+
+    --border: #212c4a;
+    --border-strong: #31406b;
+
+    --text-main: #e9eefb;
+    --text-dim: #93a0bd;
+    --text-faint: #5b6785;
+
+    /* Neon accents */
+    --accent: #00e0ff;
+    --accent-soft: rgba(0, 224, 255, 0.10);
+    --accent-border: rgba(0, 224, 255, 0.45);
+    --accent-glow: 0 0 10px rgba(0, 224, 255, 0.40);
+    --accent2: #8b5cf6;
+    --accent2-soft: rgba(139, 92, 246, 0.12);
+
+    --success: #2eff9e;
+    --danger: #ff4d6d;
+    --warning: #ffc23d;
+
+    /* ==== Control System ====
+       Buttons, text boxes and selects share the same size steps.
+       Whatever the kind, the same step means the same height, font and corner radius. */
+    --ctl-h-sm: 30px;
+    --ctl-h-md: 36px;
+    --ctl-fs-sm: 12px;
+    --ctl-fs-md: 13px;
+    --ctl-px-sm: 10px;
+    --ctl-px-md: 12px;
+    --ctl-radius: 8px;
+
+    /* Legacy token compatibility */
+    --control-h: var(--ctl-h-md);
+    --control-h-dense: var(--ctl-h-sm);
+
+    /* Legacy token compatibility */
+    --bg-main: var(--bg-surface);
+    --bg-panel: var(--bg-raised);
+    --bg-panel-light: var(--bg-hover);
+
+    --ui-font: "Noto Sans", "Noto Sans JP", system-ui, -apple-system, "Segoe UI",
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    src: url("./assets/NotoSans-VariableFont_wdth,wght.woff2") format("woff2");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Noto Sans JP";
+    src: url("./assets/NotoSansJP-VariableFont_wght.woff2") format("woff2");
+    font-display: swap;
+}
+
+html {
+    /* Rubber banding and scroll chaining are browser behaviour, so kill them */
+    overscroll-behavior: none;
+}
+
+body {
+    margin: 0;
+    font-family: var(--ui-font);
+    user-select: none;
+    /* No I-beam over text (cursor is inherited, so explicit values such as
+       pointer/grab still apply) */
+    cursor: default;
+    background: var(--bg-surface);
+    color: var(--text-main);
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Input fields are the exception: they allow text selection and the I-beam */
+input,
+textarea {
+    user-select: text;
+    cursor: text;
+}
+
+select {
+    cursor: default;
+}
+
+/* The selection colour follows the theme too (it can only appear inside input fields) */
+::selection {
+    background: rgba(0, 224, 255, 0.30);
+    color: var(--text-main);
+}
+
+/* Keep images and links from being picked up by an OS drag */
+img,
+a,
+svg {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+
+/* The spinners on number inputs look like the web, so they go */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+#root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.page {
+    flex: 1;
+    overflow: hidden;
+    background:
+        radial-gradient(1200px 500px at 75% -10%, var(--accent2-soft), transparent 60%),
+        radial-gradient(1000px 420px at 15% -10%, var(--accent-soft), transparent 55%),
+        var(--bg-surface);
+    color: inherit;
+}
+
+:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--accent-border), var(--accent-glow);
+}
+
+/* ===========================
+ * Form elements (shared styles)
+ * ========================= */
+
+/* Radio buttons use the same neon accent family as the install button (btn-primary)
+   rather than the UA default blue */
+input[type="radio"] {
+    accent-color: var(--accent);
+}
+
+.form-control {
+    background: var(--bg-base);
+    border: 1px solid var(--border-strong);
+    color: var(--text-main);
+    border-radius: var(--ctl-radius);
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.form-control:hover:not(:disabled) {
+    border-color: var(--accent-border);
+}
+
+select.form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2393a0bd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+}
+
+.form-control--md {
+    height: var(--ctl-h-md);
+    padding: 0 var(--ctl-px-md);
+    font-size: var(--ctl-fs-md);
+}
+
+.form-control--sm {
+    height: var(--ctl-h-sm);
+    padding: 0 var(--ctl-px-sm);
+    font-size: var(--ctl-fs-sm);
+}
+
+/* A multi-line textarea gets no fixed height, but a single-line one matches the others */
+textarea.form-control,
+textarea.form-control--md,
+textarea.form-control--sm {
+    height: auto;
+    min-height: var(--ctl-h-sm);
+    padding: 6px var(--ctl-px-sm);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(90, 138, 255, 0.35);
+}
+
+/* ===========================
+ * Custom Select
+ * ========================= */
+
+.custom-select {
+    position: relative;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.custom-select__control {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(145deg, #1f2430, #181b23);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    border-radius: var(--ctl-radius);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.custom-select__control--md {
+    height: var(--ctl-h-md);
+    box-sizing: border-box;
+    padding: 0 var(--ctl-px-md);
+    font-size: var(--ctl-fs-md);
+}
+
+.custom-select__control--sm {
+    height: var(--ctl-h-sm);
+    box-sizing: border-box;
+    padding: 0 var(--ctl-px-sm);
+    font-size: var(--ctl-fs-sm);
+}
+
+.custom-select__control:hover:not(:disabled),
+.custom-select__control.is-open {
+    border-color: var(--accent);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+    background: linear-gradient(145deg, #222836, #1b1f29);
+}
+
+.custom-select__control.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* value / option centre vertically with flex.
+   Left as inline-flex, the bottom of an icon counts as the baseline, so rows with an icon
+   shift their content upwards and the list jitters */
+.custom-select__value {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    overflow: hidden;
+    white-space: nowrap;
+    padding-right: 8px;
+    /* Match the line height to the icon box (16px).
+       If the value display and the option list have different line heights, the glyphs sit
+       in opposite directions and the text alone appears to move up or down */
+    line-height: 16px;
+}
+
+.custom-select__icon {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.custom-select__value-content,
+.custom-select__option-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.custom-select__option-label {
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    line-height: 16px;   /* same height as the icon box, so the glyph position is fixed */
+}
+
+.custom-select__option-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.custom-select__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    max-height: 240px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+    overflow-y: auto;
+    /* Above Config's disconnected overlay (z-index: 30), so the header's port select
+       dropdown is not hidden when it opens into the overlay's area.
+       (A select covered by the overlay cannot be clicked, so raising this changes nothing there) */
+    z-index: 40;
+}
+
+/* dropUp: open the menu upwards */
+.custom-select--up .custom-select__menu {
+    top: auto;
+    bottom: calc(100% + 4px);
+}
+
+.custom-select__divider {
+    margin: 6px 10px;
+    border-top: 1px solid var(--border);
+}
+
+.custom-select__option {
+    display: flex;
+    align-items: center;
+    padding: 9px 12px;
+    font-size: 13px;
+    line-height: 16px;   /* matches the value display (same height as the icon box) */
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Options are 13px (the value display is 12px), so the glyphs sit lower inside the line box
+   and the text looks low next to the icon. An optical correction with no layout impact */
+.custom-select__option .custom-select__option-label {
+    position: relative;
+    top: -1px;
+}
+
+.custom-select__option.is-highlighted {
+    background: rgba(63, 166, 255, 0.12);
+}
+
+.custom-select__option.is-selected {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.custom-select__option:not(.custom-select__option--empty):hover {
+    background: rgba(63, 166, 255, 0.16);
+}
+
+.custom-select__option--empty {
+    color: var(--text-dim);
+    cursor: default;
+}
+
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-warning,
+.btn-danger,
+.btn-success {
+    border-radius: var(--ctl-radius);
+    cursor: pointer;
+    line-height: 1.4;
+    white-space: nowrap;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.btn {
+    background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-raised) 100%);
+    border-color: var(--border-strong);
+    color: var(--text-main);
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.btn:active:not(:disabled),
+.btn-primary:active:not(:disabled),
+.btn-secondary:active:not(:disabled),
+.btn-warning:active:not(:disabled),
+.btn-danger:active:not(:disabled),
+.btn-success:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--accent-border);
+    box-shadow: var(--accent-glow);
+}
+
+.btn:disabled,
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-warning:disabled,
+.btn-danger:disabled,
+.btn-success:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn--sm {
+    height: var(--ctl-h-sm);
+    padding: 0 var(--ctl-px-sm);
+    font-size: var(--ctl-fs-sm);
+}
+
+.btn--md {
+    height: var(--ctl-h-md);
+    padding: 0 var(--ctl-px-md);
+    font-size: var(--ctl-fs-md);
+}
+
+/* Flat button. Drops the border, fill and shadow, showing only a faint background on hover.
+   Combined with a colour class such as btn-danger, the text colour survives */
+.btn.btn--flat {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.btn.btn--flat:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.btn.btn--flat:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+}
+
+.btn.btn--flat.btn-danger:hover:not(:disabled) {
+    background: rgba(255, 77, 109, 0.12);
+}
+
+
+/* ===========================
+ * Scrollbar
+ * ========================= */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-border);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ===========================
+ * Header / Tabs
+ * ========================= */
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    padding: 0 12px;
+    background: var(--bg-base);
+    border-bottom: 1px solid var(--border);
+}
+
+/* ===== Update chip (in the header, right of the tabs) =====
+   Only rendered once an update has been detected, so it never takes up room in the normal
+   state. margin-left: auto pulls it over to the connection bar rather than leaving it
+   floating in the middle of the header's space-between layout. */
+.update-chip {
+    position: relative;
+    align-self: center;
+    margin-left: auto;
+    margin-right: 10px;
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+    /* The header doubles as a drag region on the platforms with an integrated title bar */
+    -webkit-app-region: no-drag;
+}
+
+.update-chip:hover:not(:disabled) {
+    background: rgba(0, 224, 255, 0.18);
+    box-shadow: var(--accent-glow);
+}
+
+/* Downloaded: the one state that asks for an action, so it is the only one that glows */
+.update-chip--downloaded {
+    border-color: var(--success);
+    background: rgba(46, 255, 158, 0.12);
+    color: var(--success);
+    box-shadow: 0 0 10px rgba(46, 255, 158, 0.35);
+}
+
+.update-chip--downloaded:hover:not(:disabled) {
+    background: rgba(46, 255, 158, 0.2);
+    box-shadow: 0 0 14px rgba(46, 255, 158, 0.5);
+}
+
+.update-chip--error {
+    border-color: rgba(255, 77, 109, 0.45);
+    background: rgba(255, 77, 109, 0.12);
+    color: var(--danger);
+}
+
+.update-chip--error:hover:not(:disabled) {
+    background: rgba(255, 77, 109, 0.2);
+    box-shadow: none;
+}
+
+.update-chip--downloading {
+    cursor: default;
+}
+
+/* The progress fill sits behind the label, so the percentage is readable as a bar as well */
+.update-chip__bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(0, 224, 255, 0.25);
+    transition: width 0.2s ease-out;
+}
+
+.update-chip__label {
+    position: relative;
+}
+
+/* ===== Title bar integration (Electron only) =====
+   A dedicated drag strip goes at the very top. With only the single header row, the
+   no-drag tabs and connection UI leave far too little to grab. */
+.app-titlebar {
+    display: none;
+}
+
+/* The strip only appears on macOS, the one platform where the title bar was removed.
+   Windows/Linux keep the normal title bar (it hosts the menu bar), where this strip
+   would be a second one */
+.platform-darwin .app-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    flex-shrink: 0;
+    background: var(--bg-base);
+    -webkit-app-region: drag;
+}
+
+.app-titlebar__title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+/* macOS: the traffic light buttons sit on the left */
+.platform-darwin .app-titlebar {
+    padding-left: 80px;
+    padding-right: 80px;   /* keeps the title centred */
+}
+
+/* Make the header's empty space draggable as well (as a secondary grab area) */
+.is-electron .app-header {
+    -webkit-app-region: drag;
+}
+
+/* ===== Language switch ===== */
+
+/* Flag button at the bottom left (the bottom right collides with toasts). Flush against the
+   window edge it overlaps the OS resize area and makes the cursor flicker, so float it just inside */
+.lang-fab {
+    position: fixed;
+    left: 7px;
+    bottom: 7px;
+    /* Above Config's disconnected overlay (30), below the select dropdown (40) */
+    z-index: 35;
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 10px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.lang-fab:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-strong);
+}
+
+/* Shared frame for the flags (SVG). A thin border keeps the white Japanese flag from dissolving into the background */
+.lang-flag {
+    display: flex;
+    width: 24px;
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    line-height: 0;
+}
+
+.lang-flag svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* The language list inside the modal */
+.lang-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 240px;
+}
+
+.lang-list__item {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.lang-list__item:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.lang-list__item.is-active {
+    color: var(--text-main);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+}
+
+/* ===== Dongle tester (WebHID) ===== */
+
+.dongle-test-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 24px;
+    text-align: center;
+}
+
+.dongle-test-empty__hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 0 0 8px;
+}
+
+.dongle-test-grid {
+    display: grid;
+    /* Left is a fixed width that fits the hardware-like view (440px), right holds the IMU and rumble */
+    grid-template-columns: 456px 1fr;
+    gap: 24px;
+    min-width: 812px;
+    padding: 4px 0;
+}
+
+.dongle-test-identity {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 12px;
+}
+
+/* ===== Pro Controller 2 hardware-like view (controller test) ===== */
+
+.p2v {
+    position: relative;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.p2v__body {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.p2v__shell {
+    fill: var(--bg-surface);
+    stroke: var(--border-strong);
+    stroke-width: 1.5;
+}
+
+/* Shoulder buttons: arcs following the corners of the body. Drawn as two paths, an outline plus a band */
+.p2v-shoulder-border {
+    fill: none;
+    stroke: var(--border-strong);
+    stroke-linecap: round;
+}
+
+.p2v-shoulder-border.is-on {
+    stroke: var(--accent-border);
+    filter: drop-shadow(0 0 5px rgba(0, 224, 255, 0.45));
+}
+
+.p2v-shoulder-fill {
+    fill: none;
+    stroke: var(--bg-base);
+    stroke-linecap: round;
+}
+
+/* Back paddles (GL/GR): dashed, with a neon glow when pressed */
+.p2v-paddle {
+    fill: var(--bg-surface);
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+    stroke-dasharray: 4 3;
+}
+
+.p2v-paddle.is-on {
+    fill: var(--accent-soft);
+    stroke: var(--accent-border);
+    filter: drop-shadow(0 0 5px rgba(0, 224, 255, 0.45));
+}
+
+.p2v-shoulder-label {
+    fill: var(--text-faint);
+    font-size: 9px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+
+.p2v-shoulder-label.is-on {
+    fill: var(--accent);
+}
+
+/* Every element is absolutely positioned by its centre */
+.p2v-el {
+    position: absolute;
+    transform: translate(-50%, -50%);
+}
+
+.p2v-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-base);
+    border: 1px solid var(--border-strong);
+    color: var(--text-faint);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    transition: color 0.08s ease, border-color 0.08s ease,
+                background 0.08s ease, box-shadow 0.08s ease;
+}
+
+.p2v-btn--round { border-radius: 50%; }
+
+/* Optical correction for text labels (icons are exempt) */
+.p2v-btn__text {
+    display: inline-block;
+    transform: translate(0.5px, -1px);
+}
+.p2v-btn--square { border-radius: 4px; }
+.p2v-btn--pill { border-radius: 7px; font-size: 9px; }
+
+.p2v-btn.is-on {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    box-shadow: var(--accent-glow);
+}
+
+.p2v-stick {
+    border-radius: 50%;
+    background: var(--bg-base);
+    border: 1px solid var(--border-strong);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.p2v-stick.is-on {
+    border-color: var(--accent-border);
+    box-shadow: var(--accent-glow), inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.p2v-stick__thumb {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+.p2v-stick.is-on .p2v-stick__thumb {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+}
+
+/* D-Pad: a centre plus four arms make the cross shape (69x69, arms 23px) */
+.p2v-dpad__arm,
+.p2v-dpad__center {
+    position: absolute;
+    background: var(--bg-base);
+    border: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: var(--text-faint);
+    /* Optical correction for the triangle glyph (it looks slightly low) */
+    box-sizing: border-box;
+    padding-bottom: 2px;
+}
+
+.p2v-dpad__center {
+    left: 19px;
+    top: 19px;
+    width: 19px;
+    height: 19px;
+    border: none;
+    background: var(--bg-base);
+    z-index: 1;
+}
+
+.p2v-dpad__arm--up    { left: 19px; top: 0;    width: 19px; height: 20px; border-radius: 5px 5px 0 0; }
+.p2v-dpad__arm--down  { left: 19px; bottom: 0; width: 19px; height: 20px; border-radius: 0 0 5px 5px; }
+.p2v-dpad__arm--left  { left: 0;    top: 19px; width: 20px; height: 19px; border-radius: 5px 0 0 5px; }
+.p2v-dpad__arm--right { right: 0;   top: 19px; width: 20px; height: 19px; border-radius: 0 5px 5px 0; }
+
+.p2v-dpad__arm.is-on {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    box-shadow: var(--accent-glow);
+    z-index: 2;
+}
+
+/* The right column gets top padding so it lines up with the hardware view on the left
+   (the left side starts one identification line earlier) */
+.dongle-test-grid__right {
+    padding-top: 36px;
+}
+
+/* The stick values shown below the hardware-layout view */
+.dongle-test-stickvals {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    color: var(--text-faint);
+}
+
+/* Each display has a fixed width, so a changing sign or digit count cannot disturb its neighbour */
+.dongle-test-stickvals span {
+    min-width: 116px;
+    text-align: left;
+}
+
+.dongle-test-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 4px 0 10px;
+}
+
+.dongle-test-section-title + .dongle-test-section-title,
+.dongle-imu-row + .dongle-test-section-title {
+    margin-top: 20px;
+}
+
+.dongle-imu-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding-right: 20px;   /* padding on the right edge (taken from the bar's width) */
+    font-size: 12px;
+}
+
+.dongle-imu-row__name {
+    width: 52px;
+    flex-shrink: 0;
+    color: var(--text-dim);
+}
+
+.dongle-imu-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dongle-imu-cell__axis {
+    color: var(--text-faint);
+    font-size: 10px;
+}
+
+.dongle-imu-cell__bar {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-base);
+    overflow: hidden;
+}
+
+.dongle-imu-cell__fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--accent);
+}
+
+.dongle-imu-cell__val {
+    width: 58px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+    font-size: 11px;
+}
+
+/* Highlight the dominant axis (1g of gravity at rest / the axis of rotation) to make the axis mapping easy to check by eye */
+.dongle-imu-cell.is-dominant .dongle-imu-cell__axis,
+.dongle-imu-cell.is-dominant .dongle-imu-cell__val {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.dongle-imu-cell.is-dominant .dongle-imu-cell__fill {
+    box-shadow: var(--accent-glow);
+}
+
+.dongle-test-imu-hint {
+    margin: 10px 0 4px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-faint);
+}
+
+.dongle-test-rumble {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dongle-test-rumble__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dongle-test-rumble__label {
+    width: 34px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+/* Clickable elements are excluded from the drag region */
+.is-electron .chrome-tab,
+.is-electron .conn-bar-one button,
+.is-electron .conn-bar-one .custom-select,
+.is-electron .conn-bar-one input,
+.is-electron .conn-bar-one select {
+    -webkit-app-region: no-drag;
+}
+
+/* Gaming tabs: the neon underline treatment */
+.chrome-tabs-bar {
+    display: flex;
+    gap: 2px;
+    padding: 0 4px;
+    align-items: stretch;
+}
+
+.chrome-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 14px 20px 12px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    transition: color 0.15s ease;
+}
+
+.chrome-tab::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chrome-tab:hover {
+    color: var(--text-dim);
+}
+
+.chrome-tab.active {
+    color: var(--text-main);
+    text-shadow: 0 0 14px var(--accent-border);
+}
+
+.chrome-tab.active::after {
+    background: var(--accent);
+    box-shadow: var(--accent-glow);
+}
+
+/* ChatGPT-style tabs (used where needed) */
+.tab {
+    background: transparent;
+    padding: 7px 14px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.tab:hover {
+    color: #ffffff;
+}
+
+.tab.active {
+    background: var(--bg-panel-light);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    color: #ffffff;
+}
+
+.status.connected {
+    color: var(--success);
+    filter: drop-shadow(0 0 4px rgba(46, 255, 158, 0.6));
+}
+
+.status.error {
+    color: var(--danger);
+    filter: drop-shadow(0 0 4px rgba(255, 77, 109, 0.6));
+}
+
+.status.connecting {
+    color: var(--warning);
+    filter: drop-shadow(0 0 4px rgba(255, 194, 61, 0.6));
+}
+
+.status.disconnected {
+    color: var(--text-faint);
+}
+
+/* ===========================
+ * Connection bar (the connection UI at the top right)
+ * ========================= */
+
+.connection-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    padding: 4px 0;
+    color: var(--text-main);
+}
+
+.conn-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.conn-row-edit {
+    justify-content: flex-end;
+}
+
+.conn-label {
+    font-size: 11px;
+    color: var(--border-strong);
+}
+
+/* The single-row ConnectionBar */
+.conn-bar-one {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 4px;
+    font-size: 11px;
+    color: var(--text-main);
+    justify-content: flex-end;
+}
+
+.conn-bar-one .sep {
+    color: var(--text-faint);
+    padding: 0 4px;
+}
+
+.conn-bar-one .conn-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-raised);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* The recording dot on the record button */
+.rec-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 8px rgba(255, 77, 109, 0.7);
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: modal-overlay-in 200ms ease;
+    backdrop-filter: blur(1px);
+}
+
+.modal.is-closing {
+    animation: modal-overlay-out 180ms ease forwards;
+}
+
+.modal__content {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    width: 460px;
+    max-width: calc(100vw - 32px);
+    color: var(--text-main);
+    animation: modal-content-in 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Larger modals (the recording modal and others with lists or two columns) */
+.modal__content--md {
+    width: 600px;
+}
+
+.modal__content--lg {
+    width: 920px;
+}
+
+.modal__content.is-closing {
+    animation: modal-content-out 180ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.modal__card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+.modal__card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* ==============================
+   Welcome modal (first launch / "About Karakuri Pad")
+   ============================== */
+/* Between the default (460px) and md (600px): 600 was too wide for this content,
+   460 too cramped */
+.modal__content:has(.welcome-hero) {
+    width: 500px;
+}
+
+.welcome-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 4px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+}
+
+.welcome-hero__icon {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+.welcome-hero__title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.welcome-hero__tagline {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.welcome-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 6px;
+}
+
+.welcome-notes__heading {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+}
+
+/* The notes list mirrors the LP's .notes styling: no card, a plain list whose
+   bullets are small round dots in the warning colour */
+.welcome-notes__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.welcome-notes__list li {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.6;
+    padding-left: 18px;
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.welcome-notes__list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.65em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--warning);
+}
+
+.welcome-footer {
+    /* .modal__card-footer is a flex row with justify-content: flex-end, so take the
+       full width to spread checkbox (left) and CTA (right) apart */
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.welcome-footer__check {
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+/* ==============================
+   Macro recorder manual modal (mm-*)
+   ============================== */
+.mm-body {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Premise block: what C becomes / what a slot is */
+.mm-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.mm-intro__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mm-intro__slots {
+    display: inline-flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.mm-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 24px;
+}
+
+.mm-col {
+    min-width: 0;
+}
+
+.mm-section-title {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+}
+
+.mm-col .mm-section-title + .mm-section-title,
+.mm-vib-table + .mm-section-title,
+.mm-step--last + .mm-section-title {
+    margin-top: 16px;
+}
+
+/* Numbered flow steps with a connector rail */
+.mm-step {
+    display: flex;
+    gap: 10px;
+}
+
+.mm-step__rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.mm-step__num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mm-step__line {
+    flex: 1;
+    width: 2px;
+    margin: 2px 0;
+    background: var(--border-strong);
+    border-radius: 1px;
+}
+
+.mm-step__body {
+    padding-bottom: 14px;
+    min-width: 0;
+}
+
+.mm-step--last .mm-step__body {
+    padding-bottom: 0;
+}
+
+.mm-step__gesture {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 13px;
+    min-height: 22px;
+}
+
+.mm-step__caption {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.55;
+}
+
+/* Button chips (keyboard-key look) */
+.mm-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.mm-key--accent {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    color: var(--accent);
+}
+
+.mm-op {
+    color: var(--text-faint);
+    font-size: 12px;
+}
+
+.mm-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border-strong);
+    margin: 0 3px;
+}
+
+/* Small annotation chips inside a gesture row */
+.mm-hold,
+.mm-wait,
+.mm-limit,
+.mm-holdmark {
+    font-size: 11px;
+    color: var(--text-dim);
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+.mm-release {
+    font-size: 12px;
+    color: var(--text-main);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 2px 8px;
+    background: var(--bg-base);
+}
+
+.mm-save {
+    color: var(--success);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mm-discard {
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* The blinking REC dot */
+.mm-recdot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 6px rgba(255, 77, 109, 0.7);
+    animation: mm-rec-blink 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+@keyframes mm-rec-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+}
+
+.mm-recording {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--danger);
+}
+
+/* Vibration pattern: short pulses are narrow bars, long ones are wide */
+.mm-vib {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.mm-vib__pulse {
+    width: 9px;
+    height: 14px;
+    border-radius: 3px;
+    background: var(--warning);
+    box-shadow: 0 0 5px rgba(255, 194, 61, 0.45);
+}
+
+.mm-vib__pulse--long {
+    width: 30px;
+}
+
+/* Vibration cue legend */
+.mm-vib-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.mm-vib-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+/* Legend pulses line up in one column whatever the pattern width */
+.mm-vib-row .mm-vib {
+    width: 58px;
+    margin-top: 2px;
+}
+
+.mm-vib-row__label {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mm-vib-row__desc {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+.mm-notes {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+}
+
+/* ==============================
+   Two-column layout for the recording modal
+   ============================== */
+.macro-recorder-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 18px;
+    min-height: 460px;
+}
+
+.macro-recorder-grid__left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.macro-recorder-grid__right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* The status to the right of the start button is fixed to one line (so a difference in
+   wording cannot change the line count and move the mini controller below it) */
+/* Passthrough in the recording modal: padding collects above it, pinning it to the bottom of the left column */
+.macro-recorder-passthrough {
+    margin-top: auto;
+}
+
+/* The hardware-like view in the recording modal: Procon2View is a fixed 440x300, so it is
+   scaled to the left column's width (340px) by 340/440 = about 0.773 */
+.macro-recorder-p2v {
+    align-self: center;
+    width: 340px;
+    height: 232px;
+    overflow: hidden;
+}
+
+.macro-recorder-p2v .p2v {
+    transform: scale(0.7727);
+    transform-origin: top left;
+}
+
+.macro-recorder-grid .macro-recorder-actions {
+    min-height: var(--ctl-h-md);
+}
+
+.macro-recorder-grid .macro-recorder-status {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;   /* one step below the modal body (15px), matching the connection info frame */
+}
+
+/* The connection info frame. Takes the same height whether it holds one chip row or two lines of guidance */
+.macro-recorder-conninfo {
+    min-height: 44px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;   /* centre horizontally within the left pane */
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.macro-recorder-steps-title {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* In a read-only step list the sticks cannot be adjusted by clicking, so drop the cursor
+   and hover effects that suggest they can */
+.macro-steps--readonly .step-stick-pad--readonly {
+    cursor: default;
+}
+
+.macro-steps--readonly .step-stick-control .step-stick-pad:hover {
+    opacity: 1;
+    box-shadow: none;
+}
+
+/* The list of recorded steps. Reuses the macro tab's MacroSteps in read-only mode */
+.macro-recorder-steps-box {
+    flex: 1;
+    min-height: 0;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--ctl-radius);
+    background: var(--bg-surface);
+    /* The padding belongs to the inner .macro-steps (not doubled, so it matches the tab) */
+    padding: 0;
+}
+
+/* The outer box owns the border and the scrolling, so the inner MacroSteps drops its dotted
+   border, its margin and its own scrolling (which keeps its margin-top from always
+   overflowing and producing a scrollbar) */
+.macro-recorder-steps-box .macro-steps--readonly {
+    min-height: 100%;
+    margin-top: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    overflow-y: visible;
+}
+
+/* The BLE device list (in the create/edit modal for a connection target).
+   Finding it by scanning is the main path, and the selection fills the device name field below */
+.ble-device-list {
+    border: 1px solid var(--border);
+    border-radius: var(--ctl-radius);
+    background: var(--bg-surface);
+    overflow: hidden;
+}
+
+.ble-device-list__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 4px 4px 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+}
+
+.ble-device-list__header .spinner {
+    margin-right: 6px;
+}
+
+.ble-device-list__body {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.ble-device-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+}
+
+.ble-device-item:hover {
+    background: var(--bg-hover);
+}
+
+.ble-device-item.is-selected {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.ble-device-item__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.ble-device-item__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ble-device-list__empty {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+/* The tag showing the mode (BT / Wi-Fi). Used both in the connection select's options and for the current selection */
+.conn-type-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    flex-shrink: 0;
+}
+
+.conn-type-tag--bt {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+}
+
+/* Greens and reds are avoided for the mode tag, as they read as connection state.
+   A purple with the same makeup (text colour / 45% border / 10% fill) balances visually against BT (cyan) */
+.conn-type-tag--wifi {
+    color: #b18cff;
+    border-color: rgba(177, 140, 255, 0.45);
+    background: rgba(177, 140, 255, 0.10);
+}
+
+.modal__title {
+    font-size: 17px;
+    margin: 0;
+}
+
+/* The close button at the top right of a header. A flat style with none of a normal button's depth */
+.modal__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ctl-h-sm);
+    height: var(--ctl-h-sm);
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: var(--ctl-radius);
+    color: var(--text-dim);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modal__close:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.modal__close:active {
+    background: var(--bg-raised);
+}
+
+.modal__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 15px;
+}
+
+
+.modal__card-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+@keyframes modal-overlay-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modal-overlay-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes modal-content-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes modal-content-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+}
+
+
+/* ===========================
+ * Controller layout (overall)
+ * ========================= */
+
+.controller-root {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.controller-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+
+.controller-container {
+    display: flex;
+    justify-content: center;
+    padding-top: 40px;
+}
+
+.panel {
+    background: var(--bg-panel);
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+/* The controller cards (L/R and the button groups) */
+.controller-card {
+    border: 2px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 12px;
+    width: 187px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, transparent 40%), var(--bg-base);
+    color: var(--text-main);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.controller-card.center {
+    width: auto;
+}
+
+.card-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 15px;
+    text-align: center;
+    color: var(--text-main);
+}
+
+/* ===========================
+ * Sticks
+ * ========================= */
+
+.stick-area {
+    border: 2px solid var(--border-strong);
+    border-radius: 50%;
+    margin: auto;
+    position: relative;
+    width: 160px;
+    height: 160px;
+    background: var(--bg-base);
+}
+
+.stick-thumb {
+    background: #22c55e;
+    border-radius: 50%;
+    position: absolute;
+    width: 40px;
+    height: 40px;
+}
+
+.stick-thumb.hold {
+    box-shadow: 0 0 0 3px var(--warning);
+}
+
+.stick-thumb.pressed {
+    box-shadow: 0 0 0 3px var(--success);
+}
+
+.stick-card {
+    position: relative;
+}
+
+/* The L3/R3 click buttons in the corners of the stick panels */
+.stick-corner {
+    position: absolute;
+    bottom: 8px;
+}
+
+.stick-corner--right {
+    right: 8px;
+}
+
+.stick-corner--left {
+    left: 8px;
+}
+
+.stick-corner .btn-circle {
+    width: 34px;
+    height: 34px;
+    border-width: 2px;
+    font-size: 11px;
+}
+
+.stick-coords {
+    text-align: center;
+    font-size: 12px;
+    margin-top: 5px;
+    color: var(--text-dim);
+}
+
+/* ===========================
+ * Buttons (ABXY / LR / centre buttons)
+ * ========================= */
+
+.btn-circle {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    border: 3px solid var(--border-strong);
+    background: var(--bg-surface);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-main);
+}
+
+.btn-circle:hover {
+    background: var(--border);
+}
+
+.btn-circle.hold,
+.btn-circle.hold-left,
+.btn-circle.hold-right {
+    box-shadow: 0 0 0 3px var(--accent);
+}
+
+/* The pressed state as reported by the physical controller (passthrough) */
+.btn-circle.pressed {
+    box-shadow: 0 0 0 3px var(--success);
+    background: rgba(46, 255, 158, 0.10);
+}
+
+.shoulder-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* D-Pad */
+.dpad-grid {
+    display: grid;
+    grid-template-columns: 55px 55px 55px;
+    grid-template-rows: 55px 55px 55px;
+    gap: 8px;
+    margin: 0 auto;
+    width: 187px;
+    height: 187px;
+}
+
+.dpad-btn {
+    width: 55px;
+    height: 55px;
+    border-radius: 6px;
+    border: 3px solid var(--border-strong);
+    background: var(--bg-surface);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-main);
+}
+
+.dpad-btn:hover {
+    background: var(--border);
+}
+
+.dpad-btn.hold,
+.dpad-btn.hold-left,
+.dpad-btn.hold-right {
+    box-shadow: 0 0 0 3px var(--accent);
+}
+
+.dpad-btn.pressed {
+    box-shadow: 0 0 0 3px var(--success);
+    background: rgba(46, 255, 158, 0.10);
+}
+
+/* Face buttons grid (the ABXY side) */
+.face-buttons {
+    display: grid;
+    grid-template-columns: 55px 55px 55px;
+    grid-template-rows: 55px 55px 55px;
+    gap: 8px;
+    margin: 0 auto;
+    width: 187px;
+    height: 187px;
+}
+
+.center-buttons-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.center-buttons-row:first-of-type {
+    margin-top: 0;
+}
+
+/* Game buttons (a different design) */
+.btn-game {
+    width: 48px;
+    height: 48px;
+    background: #212428;
+    border: 1px solid var(--border-strong);
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+    transition: .15s;
+}
+
+.btn-game:hover {
+    background: #2d3035;
+}
+
+.btn-game.active {
+    box-shadow: 0 0 12px var(--accent) inset;
+    border-color: var(--accent);
+}
+
+/* ===========================
+ * Stick pads (alternative version)
+ * ========================= */
+
+.stick-pad {
+    width: 120px;
+    height: 120px;
+    background: #1c1f22;
+    border-radius: 60px;
+    border: 1px solid var(--border-strong);
+    position: relative;
+}
+
+.stick-cursor {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* ===========================
+ * Macro Editor (overall layout)
+ * ========================= */
+
+.macro-editor-root {
+    color: var(--text-main);
+    display: flex;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.macro-editor-container {
+    width: 100%;
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    padding-bottom: 28px;
+    box-sizing: border-box;
+    /* Each of the three columns scrolls within itself. Nothing overflows here */
+    overflow: hidden;
+}
+
+.macro-editor-left {
+    width: 340px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+
+.macro-editor-center {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.macro-editor-center-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+/* The record button at the top of the right pane */
+.macro-record-btn {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+/* Transport bar: Play / Stop interlocking along a diagonal cut */
+.playback-actions {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    /* clip-path would cut off the buttons' own box-shadow, so the lift shadow comes from a
+       drop-shadow on the parent, which follows the shape */
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+}
+
+.playback-actions .play-anchor {
+    flex: 2;
+    display: flex;
+    margin-right: -14px;   /* pulls the diagonals together, leaving only a thin gap */
+}
+
+.transport-btn {
+    height: 40px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.transport-btn:hover {
+    filter: brightness(1.25);
+}
+
+.transport-btn:active {
+    filter: brightness(1.45);
+    transform: translateY(1px);
+}
+
+.transport-btn:disabled {
+    cursor: default;
+    opacity: 0.45;
+    filter: saturate(0.4);
+    transform: none;
+}
+
+.transport-btn--play {
+    width: 100%;
+    color: #aef4ff;
+    /* A solidly filled raised face plus a glowing line along the top. Nothing shows through */
+    background: linear-gradient(180deg,
+        var(--accent) 0 2px,
+        #1c4d61 2px,
+        #10303f 100%);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+    border-radius: 8px 0 0 8px;
+    text-shadow: 0 0 10px rgba(0, 224, 255, 0.8);
+    padding-right: 20px;
+}
+
+.transport-btn--stop {
+    flex: 1;
+    color: #ffc4d0;
+    background: linear-gradient(180deg,
+        var(--danger) 0 2px,
+        #5c1f30 2px,
+        #38121e 100%);
+    clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%);
+    border-radius: 0 8px 8px 0;
+    text-shadow: 0 0 10px rgba(255, 77, 109, 0.8);
+    padding-left: 20px;
+}
+
+/* The warning shown only while hovering Play (rendered only while a macro is running) */
+.play-anchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.play-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    z-index: 50;
+    padding: 7px 12px;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-main);
+    background: var(--bg-raised);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), var(--accent-glow);
+    pointer-events: none;
+}
+
+.play-popover::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 22px;
+    width: 8px;
+    height: 8px;
+    background: var(--bg-raised);
+    border-left: 1px solid var(--accent-border);
+    border-top: 1px solid var(--accent-border);
+    transform: rotate(45deg);
+}
+
+.play-anchor:hover .play-popover {
+    display: block;
+}
+
+/* The playback result message (dropped steps, errors, ...) */
+.playback-msg {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+
+.playback-msg--error {
+    color: var(--danger);
+}
+
+.macro-editor-right {
+    width: 300px;
+    flex-shrink: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 12px;
+    min-height: 0;
+    /* No padding on the left. The container's gap (16px) alone matches the spacing between
+       left and centre (with left padding, only centre-to-right would look wide).
+       Top and right keep their padding as before */
+    padding-top: 16px;
+    padding-right: 16px;
+    box-sizing: border-box;
+}
+
+
+/* Inside the macro editor (shared) */
+.macro-editor {
+    background: var(--bg-panel);
+    color: var(--text-main);
+    padding: 20px;
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+}
+
+
+.macro-editor-buttons {
+    display: flex;
+    gap: 8px;
+    margin: 0 auto;
+}
+
+.macro-recorder {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.macro-recorder-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+    gap: 8px;
+}
+
+.macro-recorder-label {
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+.macro-recorder-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.macro-recorder-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+}
+
+.macro-recorder-countdown {
+    color: var(--warning);
+    font-weight: 700;
+}
+
+.macro-recorder-live {
+    color: #34d399;
+    font-weight: 700;
+}
+
+.macro-recorder-idle {
+    color: var(--text-dim);
+}
+
+.macro-recorder-detections {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 32px;
+    align-items: center;
+}
+
+.macro-recorder-chip {
+    background: var(--border);
+    border: 1px solid var(--border-strong);
+    color: var(--text-main);
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.macro-recorder-chip--warning {
+    border-color: var(--warning);
+    color: var(--warning);
+    background: #1c1917;
+}
+
+.macro-recorder-link {
+    color: #93c5fd;
+    font-size: 12px;
+    text-decoration: underline;
+}
+
+.macro-recorder-steps-preview {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+
+.macro-recorder-steps-preview ul {
+    margin: 0;
+    padding-left: 16px;
+    color: var(--text-main);
+}
+
+.macro-recorder-empty {
+    color: var(--text-faint);
+}
+
+.macro-note {
+    font-size: 12px;
+    color: var(--border-strong);
+}
+
+/* Palette (left/right columns) */
+
+.macro-palette {
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: rgba(6, 8, 14, 0.35);
+}
+
+.palette-caption {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 4px;
+}
+
+.palette-caption-icon {
+    color: var(--text-faint);
+    font-size: 13px;
+}
+
+.macro-palette h3 {
+    margin: 14px 0 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--accent-border);
+}
+
+.macro-palette h3:first-child {
+    margin-top: 0;
+}
+
+.palette-hint {
+    margin: 12px 0 0;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-faint);
+}
+
+.palette,
+.steps {
+    background: var(--bg-panel-light);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.palette-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-raised) 100%);
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    cursor: grab;
+    color: var(--text-main);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.palette-item:hover {
+    border-color: var(--accent-border);
+    box-shadow: var(--accent-glow);
+    transform: translateY(-1px);
+}
+
+.palette-item:active {
+    cursor: grabbing;
+    transform: translateY(0);
+}
+
+.palette-icon-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* A two-column grid for chips with long labels (Sticks and friends) */
+.palette-grid--wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.palette-grid--wide .palette-item {
+    white-space: nowrap;
+}
+
+/* Steps (the centre list) */
+
+/* Matched to the look of the recording modal's list frame (.macro-recorder-steps-box).
+   This is the only place the padding is defined (the modal's outer box has none) */
+.macro-steps {
+    margin-top: 8px;
+    padding: 18px 14px;
+    border-radius: var(--ctl-radius);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-surface);
+    overflow-y: auto;
+    /* Take all the remaining height of the centre column (a flex column) */
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* .macro-steps::after { */
+/*     content: 'STEPS'; */
+/*     width: 100%; */
+/*     display: block; */
+/*     position: absolute; */
+/* } */
+
+.macro-steps .back-text {
+    text-align: center;
+    color: var(--text-faint);
+    opacity: 0.55;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-top: 56px;
+    width: calc(100% - 15px);
+    position: absolute;
+}
+
+.step-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    background: var(--bg-raised);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    color: var(--text-main);
+    transition: border-color 0.15s ease;
+}
+
+.step-row:hover {
+    border-color: var(--border-strong);
+    border-left-color: var(--accent);
+}
+
+.step-kind-select {
+    width: 76px;
+    flex: 0 0 auto;
+}
+
+.step-row.dragging {
+    display: none;
+}
+
+.step-main {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    gap: 8px;
+    flex: 1;
+    cursor: default;
+}
+
+.step-stick-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.step-stick-pad {
+    position: relative;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: #0b1221;
+    flex-shrink: 0;
+}
+
+.step-stick-control .step-stick-pad:hover {
+    opacity: 0.8;
+    box-shadow: 0 0 4px 2px #82858e33;
+}
+
+.step-stick-pad--readonly {
+    cursor: pointer;
+    outline: none;
+}
+
+.step-stick-pad--readonly:focus-visible {
+    box-shadow: 0 0 0 2px #22c55e33;
+}
+
+.step-stick-thumb {
+    position: absolute;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
+}
+
+.modal .step-stick-thumb {
+    cursor: grab;
+}
+
+.step-stick-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 90px;
+}
+
+.step-stick-label {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.step-stick-values,
+.step-stick-ghost-values {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.step-stick-modal {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.step-stick-modal__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--text-main);
+}
+
+.step-stick-modal__label {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.step-stick-modal__values {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.step-label {
+    font-size: 13px;
+    min-width: 120px;
+}
+
+.step-input {
+    width: 70px;
+}
+
+.step-controls .btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-left: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 1;
+}
+
+/* Turns the danger colour on hover, so it reads as a delete button */
+.step-controls .btn:hover:not(:disabled) {
+    color: var(--danger);
+    border-color: rgba(255, 77, 109, 0.55);
+    box-shadow: 0 0 8px rgba(255, 77, 109, 0.35);
+    background: rgba(255, 77, 109, 0.08);
+}
+
+/* Key hints and the like */
+.step-kbd {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-main);
+}
+
+/* Drag handle / ghost */
+
+.step-drag-handle {
+    cursor: grab;
+    user-select: none;
+    color: #888;
+    padding: 0 4px;
+    font-size: 12px;
+}
+
+.step-row.dragging .step-drag-handle {
+    cursor: grabbing;
+    color: #ccc;
+}
+
+.step-drop-indicator.active {
+    border: 1px dashed #e1b425;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    height: 44px;
+}
+
+.drag-ghost {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    height: 66px !important;
+}
+
+/* Slots column (left column) */
+
+.macro-slots-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.macro-slots-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.macro-slot-new-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.macro-slot-new-input,
+.macro-slot-name-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.macro-slot-name-textarea {
+    width: 100%;
+    resize: none;
+    overflow: hidden;
+    line-height: 1.3;
+    font-family: inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.macro-slots-list {
+    overflow-y: auto;
+    min-height: 0;
+    margin-top: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    padding: 4px;
+    max-height: calc(100vh - 200px);
+    box-sizing: border-box;
+}
+
+.macro-slots-empty {
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 4px 6px;
+}
+
+.macro-slot-item {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.macro-slot-item {
+    border: 1px solid transparent;
+}
+
+.macro-slot-item:hover {
+    background: var(--bg-hover);
+}
+
+.macro-slot-item.active,
+.macro-slot-item.selected {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    box-shadow: inset 0 0 12px rgba(0, 224, 255, 0.06);
+}
+
+.macro-slot-radio {
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.macro-slot-main {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.macro-slot-name {
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.macro-slot-action-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.macro-slot-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Shared button and input styles (slots / Steps / the left column) */
+
+/* Right column: the capture preview */
+
+.capture-preview {
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-base);
+    padding: 6px 8px;
+}
+
+.capture-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+/* The device select takes the remaining width, and the aspect ratio select is pinned to the right at a fixed width */
+.capture-header .capture-select {
+    flex: 1;
+    min-width: 0;
+}
+
+.capture-header .capture-aspect-select {
+    flex: 0 0 auto;
+    width: 88px;
+}
+
+.capture-select {
+    color: var(--text-main);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+}
+
+.custom-select__control {
+    background: var(--bg-base);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+
+.capture-video-wrapper {
+    /* A fixed size rather than one following the window width
+       (a width that fits the centre column at the 1130px minimum window).
+       The height follows from aspect-ratio (set inline) */
+    width: 420px;
+    background: #000;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.capture-video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
+.capture-error {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--warning);
+}
+
+/* ===========================
+ * Playback bar (bottom)
+ * ========================= */
+
+
+
+
+/* ===========================
+ * Config tab
+ * ========================= */
+
+.config-root {
+    padding: 16px;
+    gap: 24px;
+    height: 100%;
+}
+
+.config-container {
+    padding: 16px;
+    padding-right: 20px;
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    height: 100%;
+    box-sizing: border-box;
+    position: relative;   /* the reference for the disconnected overlay */
+}
+
+/* The translucent layer covering the settings panel and serial monitor while serial is
+   disconnected. It does not hide them: the UI stays faintly visible, only input is blocked */
+.config-disabled-overlay {
+    position: absolute;
+    top: 5px;
+    bottom: 8px;
+    /* Stretched to the full window width horizontally (.page is overflow: hidden, so the excess is clipped) */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    z-index: 30;   /* above the panel's UI, below the select dropdown (z-index: 40) */
+    background: rgba(6, 8, 14, 0.55);
+    backdrop-filter: blur(0.8px);
+    color: var(--text-main);
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+    user-select: none;
+}
+
+/* The message sits slightly above dead centre (the panel's optical centre) */
+.config-disabled-overlay__text {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0 16px;
+}
+
+.config-header {
+    padding: 16px;
+    padding-bottom: 4px;
+}
+
+/* The cover loading over the connection settings card while the CFG GET reply
+   is pending after a serial connect */
+.config-cover-host {
+    position: relative;
+}
+
+.config-cover-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 20;   /* above the panel's UI, below the disconnected overlay (30) and dropdowns (40) */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(6, 8, 14, 0.72);
+    backdrop-filter: blur(1.5px);
+    border-radius: 10px;   /* matches .card.config-card */
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    user-select: none;
+    /* No fade-in: this sits beneath the disconnected overlay before that lifts, and a
+       fade would leave the panel half-exposed for its duration */
+}
+
+.config-cover-loading .spinner {
+    width: 26px;
+    height: 26px;
+    border-width: 3px;
+    margin: 0;
+}
+
+.config-left {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    /* Wide enough for the three mode radios (Bluetooth / Wi-Fi / dongle) to fit on one line
+       without wrapping. The serial monitor gives up that width */
+    width: 480px;
+}
+
+.config-right {
+    flex: 1 1 auto;
+    min-height: 260px;
+    /* Without this the flex default (min-width: auto) stops the panel shrinking below
+       the xterm canvas width, and the monitor sticks out at the minimum window width */
+    min-width: 0;
+}
+
+.config-title {
+    margin: 0 0 4px;
+}
+
+/* The connection bar at the top of the Config tab */
+.config-conn-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    background: var(--bg-base);
+    color: var(--text-main);
+    border-radius: 10px;
+    border: 2px solid var(--border-strong);
+}
+
+.config-conn-bar .conn-status {
+    font-size: 14px;
+    color: var(--text-main);
+    margin-left: 4px;
+    margin-right: 4px;
+    width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+.config-conn-bar .status {
+    font-size: 20px;
+}
+
+/* The permanent note just below the connection bar */
+.config-conn-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+
+/* Config cards (Wi-Fi/IP settings) */
+.card.config-card {
+    background: var(--bg-base);
+    color: var(--text-main);
+    border-radius: 10px;
+    border: 2px solid var(--border-strong);
+    /* With overflow: hidden, the dropdown of a select near the bottom of the card gets
+       clipped by the frame and disappears. The header and footer carry no background of
+       their own, so the rounded corners survive visible */
+    overflow: visible;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.card-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+}
+
+.card-body {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card-footer {
+    padding: 10px 16px 12px;
+    border-top: 1px solid var(--border);
+}
+
+/* Text boxes and selects */
+.cfg-label {
+    font-size: 15px;
+    display: block;
+    margin-bottom: 2px;
+    margin-top: 5px;
+}
+
+/* The checklist in the error modal. The UA default bullets look out of place, so each item
+   gets a small accent dot and stays on one line (no wrapping) */
+.cfg-error-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0 0 4px;
+}
+
+.cfg-error-checks__item {
+    position: relative;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+.cfg-error-checks__item::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0.62em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0.75;
+}
+
+/* The raw error message inside the error modal. Matched to the app's dark tone */
+.cfg-error-detail {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    overflow-wrap: anywhere;
+}
+
+/* The radio buttons in the connection settings. Their labels are a size smaller than body text */
+.cfg-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* The UA default radio margin (about 3px at the top) throws off flex centring and makes the
+   text look like it is floating, so it goes */
+.cfg-radio-label input[type="radio"] {
+    margin: 0;
+}
+
+.cfg-input,
+.cfg-select {
+    width: 100%;
+}
+
+.cfg-hint {
+    margin-top: 4px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--text-faint);
+}
+
+/* Password field: the eye icon toggles visibility */
+.password-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-field .cfg-input {
+    padding-right: 34px;   /* room for the icon */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    font-size: 15px;
+    transition: color 0.15s ease;
+}
+
+.password-toggle:hover {
+    color: var(--accent);
+}
+
+/* The SerialConsole box (right side) */
+.config-right .config-card {
+    width: 100%;
+}
+
+.cfg-message {
+    margin: 1px 8px 8px;
+    font-size: 12px;
+    color: #f0f0f0;
+    opacity: 0.9;
+}
+
+/* Button variants (neon family: a dark face with a glowing outline and text) */
+.btn-primary {
+    background-color: var(--accent-soft);
+    border-color: var(--accent-border);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: rgba(0, 224, 255, 0.20);
+    box-shadow: var(--accent-glow);
+}
+
+.btn-primary:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* secondary is "an ordinary button that does not assert itself with colour".
+   Darkening the text would make it indistinguishable from disabled, so face and text stay normal */
+.btn-secondary {
+    background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-raised) 100%);
+    border-color: var(--border-strong);
+    color: var(--text-main);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--accent-border);
+}
+
+.btn-success {
+    background-color: rgba(46, 255, 158, 0.10);
+    border-color: rgba(46, 255, 158, 0.45);
+    color: var(--success);
+    font-weight: 700;
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: rgba(46, 255, 158, 0.20);
+    box-shadow: 0 0 10px rgba(46, 255, 158, 0.35);
+}
+
+.btn-warning {
+    background-color: rgba(255, 194, 61, 0.10);
+    border-color: rgba(255, 194, 61, 0.50);
+    color: var(--warning);
+    font-weight: 700;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background-color: rgba(255, 194, 61, 0.20);
+    box-shadow: 0 0 10px rgba(255, 194, 61, 0.30);
+}
+
+.btn-danger {
+    background-color: rgba(255, 77, 109, 0.10);
+    border-color: rgba(255, 77, 109, 0.50);
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: rgba(255, 77, 109, 0.20);
+    box-shadow: 0 0 10px rgba(255, 77, 109, 0.35);
+}
+
+/* ===========================
+ * Install tab
+ * ========================= */
+
+.install-root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+    gap: 12px;
+}
+
+.install-grid {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+
+    /* display: flex; */
+    gap: 24px;
+    /* align-items: center; */
+    /* flex-direction: column; */
+}
+
+/* The BOOTSEL guidance on the left. Laid out to look like the cards in the right column */
+.install-guide-card {
+    flex: 0 0 auto;
+    width: 440px;
+}
+
+.install-guide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.install-guide img {
+    width: 100%;
+    max-width: 380px;
+}
+
+.install-board-figure {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+}
+
+/* Points at the BOOTSEL button in the board image (x~28%, y~61%) */
+.install-board-arrow {
+    position: absolute;
+    left: 28.8%;
+    top: 70%;
+    transform: translateX(-50%);
+    height: 60px;
+    width: auto;
+    color: #e53935;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+.install-guide p {
+    width: 100%;
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.install-column {
+    width: 440px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.install-column .card-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.install-grid .card {
+    flex-grow: 1;
+    flex-shrink: 0;
+    flex-basis: auto;
+}
+
+.install-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.install-row.device {
+    min-height: 55px;
+}
+
+.install-label {
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: var(--text-dim);
+}
+
+.install-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+/* The item name and the detected board go on the first line, the select on the second
+   (mount paths can get long, so the select does not sit beside the item name) */
+.install-candidate-select {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.install-candidate-select__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.install-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.install-footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.install-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    width: 100%;
+}
+
+.install-versions {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+/* A general-purpose loading spinner (small enough to sit inside a button) */
+.spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    border: 2px solid rgba(233, 238, 251, 0.25);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spinner-rotate 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spinner-rotate {
+    to { transform: rotate(360deg); }
+}
+
+.install-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+}
+
+/* The device row stacks "detected board" and "install target" vertically */
+.install-row.device .install-status {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.install-row.device .install-note {
+    padding: 0;
+}
+
+.install-ok {
+    color: var(--success);
+    font-weight: 700;
+}
+
+.install-missing {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.install-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 1px 10px;
+}
+
+/* The detected board name is shown in the accent colour (it is information, not a warning) */
+.install-note--board {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.install-warning {
+    padding: 10px 12px;
+    background: rgba(255, 99, 99, 0.08);
+    border: 1px solid rgba(255, 99, 99, 0.4);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.install-messages {
+    margin: 1px 8px 8px;
+    font-size: 12px;
+    color: #f0f0f0;
+    opacity: 0.9;
+    text-align: right;
+    height: 18px;
+}
+
+/* The footnote at the bottom. Kept in an unassertive note style so it blends with the cards */
+.install-caption {
+    padding-top: 12px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.7;
+}
+
+/* ===== Keep modals inside the viewport =====
+   As recorded temporary steps or detection buttons pile up, a card keeps growing taller
+   until it runs off the screen and cannot be closed. Keep it inside the viewport and let
+   the content scroll instead. */
+.modal__content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+}
+
+.modal__content > .modal__card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;          /* required for flex children to scroll */
+    max-height: 100%;
+}
+
+/* The header and footer stay visible at all times; only the body scrolls */
+.modal__content > .modal__card > .modal__card-header,
+.modal__content > .modal__card > .modal__card-footer {
+    flex: 0 0 auto;
+}
+
+.modal__content > .modal__card > .modal__card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* Lists get a cap of their own too. Scrolling just the part that keeps growing is easier to
+   work with than having the whole modal move. */
+.macro-recorder-detections {
+    max-height: 92px;
+    overflow-y: auto;
+}
+
+.macro-recorder-steps-preview {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+/* ===== Passthrough panel (bottom centre of the Controller tab) ===== */
+.passthrough-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.passthrough-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.passthrough-title {
+    font-weight: 700;
+    font-size: 14px;
+    text-align: center;
+    color: var(--text-main);
+}
+
+.passthrough-desc {
+    font-size: 10px;
+    text-align: center;
+    color: var(--text-faint);
+}
+
+.passthrough-indicator {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+.passthrough-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--text-faint);
+}
+
+.passthrough-dot--active {
+    background: var(--success);
+    box-shadow: 0 0 8px rgba(46, 255, 158, 0.7);
+}
+
+.passthrough-dot--searching {
+    background: var(--warning);
+    box-shadow: 0 0 8px rgba(255, 194, 61, 0.6);
+    animation: passthrough-blink 1s ease-in-out infinite;
+}
+
+@keyframes passthrough-blink {
+    50% { opacity: 0.35; }
+}
+
+.passthrough-note {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: center;
+}
+
+.passthrough-note--error {
+    color: var(--danger);
+}
+
+/* ===== Toast notifications ===== */
+.toast-container {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    max-width: 360px;
+    padding: 10px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-main);
+    background: var(--bg-raised);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    animation: toast-in 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.toast--error {
+    border-left-color: var(--danger);
+}
+
+.toast--warning {
+    border-left-color: var(--warning);
+}
+
+.toast--success {
+    border-left-color: var(--success);
+}
+
+@keyframes toast-in {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== Error boundary (the last line of defence) ===== */
+.error-boundary {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+}
+
+.error-boundary__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    max-width: 480px;
+    padding: 28px 36px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.error-boundary__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--danger);
+}
+
+.error-boundary__message {
+    font-size: 12px;
+    color: var(--text-dim);
+    word-break: break-all;
+    text-align: center;
+}
