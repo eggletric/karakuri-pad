@@ -67,14 +67,29 @@ each ecosystem's own naming convention.
 info" and then "Run anyway" if you are happy to. There is no code signing certificate behind
 this project.
 
-On **Linux**, talking to the hardware needs a few permissions:
+On **Linux**, talking to the hardware needs a few permissions. The **deb and rpm packages set
+everything up automatically on install**: udev rules for the serial port and the HID devices,
+and `CAP_NET_RAW` on the binary for Bluetooth (plus the `ld.so.conf.d` entry that capability
+requires, since secure-execution mode disables the binary's `$ORIGIN` RUNPATH).
 
-- Serial (the Pico's USB config port): your user has to be in the `dialout` group
-  (`sudo usermod -aG dialout $USER`, then log out and back in)
-- The Pro Controller over USB HID: a udev rule granting access to `057e:2009`
-  (see [node-hid's udev notes](https://github.com/node-hid/node-hid#udev-rules))
-- Bluetooth (the Pico link and the Pro Controller 2): `setcap` on the Electron binary, or run
-  with the capability granted, so noble may use raw sockets
+The **AppImage** cannot run install scripts, so there:
+
+- Serial and HID: save the rules below as `/etc/udev/rules.d/70-karakuri-pad.rules`, then run
+  `sudo udevadm control --reload-rules && sudo udevadm trigger`. (For serial alone, membership
+  in the `dialout` group also works.)
+- Bluetooth (the Pico link and Pro Controller 2 recording) needs `CAP_NET_RAW`, which an
+  AppImage cannot carry across its FUSE mount — use the deb or rpm package if you need the
+  Bluetooth features.
+
+```
+# Karakuri Pad - device access for unprivileged users
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2e8a", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="057e", MODE="0666", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="057e", MODE="0666", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="2e8a", MODE="0666", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0666", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="0f0d", ATTRS{idProduct}=="0092", MODE="0666", TAG+="uaccess"
+```
 
 ## Development
 

@@ -131,6 +131,8 @@
         "linux": {
             "icon": "build/icon.png",
             "category": "Utility",
+            "afterInstall": "build/linux/after-install.sh",
+            "afterRemove": "build/linux/after-remove.sh",
             "maintainer": "Eggletric <karchz0101@gmail.com>",
             "synopsis": "Macro controller editor for the Pico W / Pico 2 W",
             "target": [
