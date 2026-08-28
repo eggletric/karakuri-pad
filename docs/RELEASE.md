@@ -45,15 +45,22 @@ visible to everyone running an older build.
 
 | Leg | Runner | Output |
 |---|---|---|
-| mac | self-hosted (`self-hosted`, `macos`, `release`) | dmg + zip, arm64 and x64 |
-| win-x64 | `windows-latest` | nsis |
+| mac | `macos-latest` | dmg + zip, arm64 and x64 |
+| win-x64 | `windows-2022` | nsis |
 | win-arm64 | `windows-11-arm` | nsis |
 | linux-x64 | `ubuntu-22.04` | AppImage + deb + rpm |
 | linux-arm64 | `ubuntu-22.04-arm` | AppImage + deb + rpm |
 
+Every leg runs on a GitHub-hosted runner. A self-hosted runner is deliberately avoided: on a
+public repository a fork PR can run code on it, and the mac runner would be the machine
+holding the signing key.
+
 The native modules (node-hid / serialport / noble) cannot be cross-compiled, so each arch has
 to build on its own runner. macOS is the exception: one leg builds both arches, which is also
-why it is the only platform whose `latest*.yml` needs no merging afterwards.
+why it is the only platform whose `latest*.yml` needs no merging afterwards. That works
+because every darwin native inside the packed `node_modules` is universal — noble and
+serialport ship universal prebuilds, and node-hid is lipo'd together from the two vendored
+slices (`vendor/native-prebuilds`) before packing.
 
 ### Why latest.yml gets rebuilt
 
@@ -65,13 +72,15 @@ present on the release, uploading it with `--clobber`. See
 
 ## Signing
 
-**macOS** is signed and notarized. The self-hosted runner already has the Developer ID
-Application identity in its System keychain, so the workflow does not install one — it only
-verifies the identity is visible and extracts `CSC_NAME` from it. Notarization needs three
-repository secrets:
+**macOS** is signed and notarized. The Developer ID Application identity comes from the
+`CSC_LINK` secret — electron-builder imports it into a temporary keychain for the build and
+removes it afterwards, so nothing is installed on the runner. Signing and notarization need
+five repository secrets:
 
 | Secret | What it is |
 |---|---|
+| `CSC_LINK` | The Developer ID Application certificate + key (`.p12`), base64 encoded |
+| `CSC_KEY_PASSWORD` | The password of that `.p12` |
 | `APPLE_API_KEY_B64` | The App Store Connect API key (`.p8`), base64 encoded |
 | `APPLE_API_KEY_ID` | The key ID |
 | `APPLE_API_ISSUER` | The issuer ID |

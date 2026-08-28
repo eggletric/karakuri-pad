@@ -21,8 +21,8 @@ permissions:
 
 jobs:
   # A job-level `if` cannot see the matrix context, so the leg selection is expanded here.
-  # "no-mac" exists because the self-hosted Mac is not registered against this repository — the
-  # macOS files can be collected locally instead (see docs/RELEASE.md).
+  # "no-mac" skips the macOS leg when its files were already collected locally
+  # (see docs/RELEASE.md).
   plan:
     name: Plan legs
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
       - id: pick
         run: |
           BASE='[
-            {"leg":"mac","os":["self-hosted","macos","release"],"archs":"x64 arm64"},
+            {"leg":"mac","os":"macos-latest","archs":"x64 arm64"},
             {"leg":"win-x64","os":"windows-2022"},
             {"leg":"win-arm64","os":"windows-11-arm"},
             {"leg":"linux-x64","os":"ubuntu-22.04"},
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: ${{ matrix.leg != 'mac' && 'yarn' || '' }}
+          cache: yarn
 
       # libudev-dev: the usb dependency behind @stoprocent/bluetooth-hci-socket compiles against it
       - name: Install linux build deps
