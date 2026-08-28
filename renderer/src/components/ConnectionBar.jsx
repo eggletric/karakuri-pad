@@ -39,11 +39,12 @@ function normalizeEntry(e) {
 function entryLabel(e) {
     const isBle = e.type === "ble";
     return (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span className={`conn-type-tag ${isBle ? "conn-type-tag--bt" : "conn-type-tag--wifi"}`}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0, maxWidth: "100%" }}>
+            <span className={`conn-type-tag ${isBle ? "conn-type-tag--bt" : "conn-type-tag--wifi"}`} style={{ flexShrink: 0 }}>
                 {isBle ? "BT" : "Wi-Fi"}
             </span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.name}</span>
+            {/* nowrap is required for text-overflow to draw the "…" instead of clipping bare */}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name}</span>
         </span>
     );
 }
@@ -327,7 +328,10 @@ export function ConnectionBar() {
                 placeholder={t("connection.selectPlaceholder")}
                 options={optionList}
                 aria-label="Connection slot"
-                style={{ width: 'auto', minWidth: 400 }}
+                // Fixed width: with width auto the box stretches to fit long slot names,
+                // which defeats the label ellipsis. 320 keeps the header inside the minimum
+                // window width even in English with the update chip visible while connected
+                style={{ width: 320 }}
             />
             {(() => {
                 if (status === 'connecting') {
