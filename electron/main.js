@@ -404,8 +404,8 @@ function installAppMenu() {
 
 function createWindow() {
     const win = new BrowserWindow({
-        width: 1130,
-        minWidth: 1130,
+        width: 1165,
+        minWidth: 1165,
         height: 810,
         minHeight: 810,
         // macOS: fold the title bar into the app's own drag strip (only the traffic light
