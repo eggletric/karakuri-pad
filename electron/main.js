@@ -64,6 +64,8 @@ const MAIN_MESSAGES = {
         writeTimeout: "書き込みがタイムアウトしました。デバイスを差し直してください。",
         uf2FileNameInvalid: "UF2 のファイル名が不正です",
         uf2MountNotAllowed: "指定された書き込み先が BOOTSEL ドライブとして検出されていません。\nデバイスを差し直してから再検出してください。",
+        uf2RemountFailed: "書き込み前のドライブ再マウントに失敗しました。\nデバイスを差し直してから、もう一度お試しください。",
+        uf2ReplugHint: "デバイスを差し直してから、もう一度お試しください。",
         downloadUrlNotAllowed: "許可されていないダウンロード URL です",
         firmwareWriteBusy: "ファームウェアの書き込み中です",
         bleScanBusy: "スキャンを実行中です",
@@ -113,6 +115,8 @@ const MAIN_MESSAGES = {
         writeTimeout: "Write timed out. Replug the device.",
         uf2FileNameInvalid: "Invalid UF2 file name",
         uf2MountNotAllowed: "The specified destination was not detected as a BOOTSEL drive.\nReplug the device and detect it again.",
+        uf2RemountFailed: "Failed to remount the drive before writing.\nReplug the device and try again.",
+        uf2ReplugHint: "Replug the device and try again.",
         downloadUrlNotAllowed: "This download URL is not allowed",
         firmwareWriteBusy: "A firmware write is already in progress",
         bleScanBusy: "A scan is already running",
@@ -2967,6 +2971,61 @@ ipcMain.handle("pico-firmware-download", async (_event, payload = {}) => {
     return { dataBase64 };
 });
 
+// Remounts the BOOTSEL volume right before writing (macOS only, best effort).
+// The bootrom discards every write to its fake FAT, so while the drive sits mounted the OS
+// keeps caching metadata writes (.fseventsd etc.) that the device never kept. After a long
+// enough idle the OS's view has drifted so far that the UF2 copy fails with EIO or hangs.
+// Rebuilding the mount resets the OS-side state; a replug does the same thing by hand.
+// Returns "remounted" | "skipped" (volume untouched). Throws if the volume ended up
+// unmounted: writing into the dead mount point would look like a reboot and report a false
+// success, so that state must not reach the write.
+async function remountBootselVolume(mountPath) {
+    if (process.platform !== "darwin") return "skipped";
+
+    let deviceNode = "";
+    try {
+        const { stdout } = await execFileAsync("diskutil", ["info", mountPath], {
+            encoding: "utf-8",
+            timeout: 15000,
+        });
+        deviceNode = String(stdout || "").match(/Device Node:\s*(\S+)/)?.[1] || "";
+    } catch (err) {
+        console.warn("[UF2] diskutil info failed:", err?.message || err);
+    }
+    // Without the device node there is nothing to mount back, so leave the volume alone
+    if (!deviceNode) return "skipped";
+
+    try {
+        await execFileAsync("diskutil", ["unmount", mountPath], { encoding: "utf-8", timeout: 15000 });
+    } catch (err) {
+        // Spotlight or another process may hold the volume; force detaches it anyway
+        try {
+            await execFileAsync("diskutil", ["unmount", "force", mountPath], {
+                encoding: "utf-8",
+                timeout: 15000,
+            });
+        } catch (err2) {
+            console.warn("[UF2] unmount failed, writing without a remount:", err2?.message || err2);
+            return "skipped";
+        }
+    }
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await execFileAsync("diskutil", ["mount", deviceNode], { encoding: "utf-8", timeout: 15000 });
+            console.log("[UF2] remounted", deviceNode, "before writing");
+            return "remounted";
+        } catch (err) {
+            if (attempt < 2) {
+                await new Promise((res) => setTimeout(res, 500));
+                continue;
+            }
+            console.warn("[UF2] mount failed after unmount:", err?.message || err);
+        }
+    }
+    throw new Error(tr("uf2RemountFailed"));
+}
+
 // Guards against re-entry mid-write. Writing to the same drive twice leaves the bootloader
 // with a half-finished image, and recovering means starting over from BOOTSEL.
 let firmwareWriting = false;
@@ -3034,8 +3093,25 @@ ipcMain.handle("pico-firmware-write", async (_event, payload = {}) => {
             );
         }
 
+        // See remountBootselVolume: a long-mounted volume accumulates OS-side drift that
+        // makes the write fail, so the mount is rebuilt right before writing.
+        if ((await remountBootselVolume(targetMount)) === "remounted") {
+            // The volume can come back under another mount point, so detect it again
+            const fresh = await detectRpiRp2Mount({ force: true });
+            if (!fresh.mountPath) {
+                throw new Error(tr("uf2RemountFailed"));
+            }
+            targetMount = fresh.mountPath;
+        }
+
         const dest = path.join(targetMount, rawFileName);
-        await writeUf2AndAwaitReboot(dest, buf, targetMount);
+        try {
+            await writeUf2AndAwaitReboot(dest, buf, targetMount);
+        } catch (err) {
+            // writeTimeout already tells the user to replug; the raw fs errors (EIO etc.) don't
+            if (err?.message === tr("writeTimeout")) throw err;
+            throw new Error(`${err?.message || err}\n${tr("uf2ReplugHint")}`);
+        }
         // The drive disappears after the write, so the cache is discarded
         invalidateRpiDetectCache();
         return { status: "OK", path: dest, family, boardId: detection.boardId };
