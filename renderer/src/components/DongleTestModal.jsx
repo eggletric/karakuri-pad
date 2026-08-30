@@ -84,9 +84,19 @@ const SWITCHMAP_TOKEN_CODE = {
 };
 function applySwitchmapReverse(out, swMap) {
     if (!swMap) return;
-    for (const [code, tok] of [["C", swMap.c], ["GL", swMap.gl], ["GR", swMap.gr]]) {
-        const target = SWITCHMAP_TOKEN_CODE[tok];
-        if (target && out.buttons.has(target)) out.buttons.add(code);
+    const target = SWITCHMAP_TOKEN_CODE[swMap.c];
+    if (target && out.buttons.has(target)) out.buttons.add("C");
+}
+
+// GL/GR are not per-identity tokens but one button mask each (FW: glmap= / grmap=),
+// and every parser above normalises to Pro Controller codes, so one reverse lookup
+// covers all four identities. A paddle lights up only when its whole combination is
+// down, since that is the only evidence the report carries.
+function applyPaddleReverse(out, paddles) {
+    if (!paddles) return;
+    for (const [code, codes] of [["GL", paddles.gl], ["GR", paddles.gr]]) {
+        if (!codes || codes.length === 0) continue;
+        if (codes.every((c) => out.buttons.has(c) || out.dpad.has(c))) out.buttons.add(code);
     }
 }
 
@@ -140,12 +150,10 @@ function parseDS4(dv, out, ds4Map) {
     out.buttons = new Set(
         DS4_BUTTON_BITS.filter(([bi, mask]) => bytes[bi] & mask).map(([, , code]) => code)
     );
-    // C/GL/GR are lit by reverse lookup from the bit they are mapped to (ds4map)
+    // C is lit by reverse lookup from the bit it is mapped to (ds4map)
     if (ds4Map) {
-        for (const [code, token] of [["C", ds4Map.c], ["GL", ds4Map.gl], ["GR", ds4Map.gr]]) {
-            const bit = DS4_TOKEN_BITS[token];
-            if (bit && (bytes[bit[0]] & bit[1])) out.buttons.add(code);
-        }
+        const bit = DS4_TOKEN_BITS[ds4Map.c];
+        if (bit && (bytes[bit[0]] & bit[1])) out.buttons.add("C");
     }
     const hat = dv.getUint8(4) & 0x0f;
     out.dpad = new Set(hat < 8 ? DS4_HAT_DIRS[hat] : []);
@@ -249,9 +257,11 @@ function dominantAxis(values, threshold) {
     return idx;
 }
 
-// ds4Map / swMap: the C/GL/GR mappings from the settings screen ({ c, gl, gr }), for the
-// reverse-lookup lighting under the DS4 and switch/procon identities respectively
-export function DongleTestModal({ open, onClose, ds4Map, swMap }) {
+// ds4Map / swMap: the C mapping from the settings screen ({ c }), for the reverse-lookup
+// lighting under the DS4 and switch/procon identities respectively.
+// paddles: the GL/GR assignments as arrays of Pro Controller codes ({ gl: [...], gr: [...] }),
+// which are identity-independent and so light up the same way everywhere
+export function DongleTestModal({ open, onClose, ds4Map, swMap, paddles }) {
     // Read through refs so changes made after connecting are picked up
     const ds4MapRef = React.useRef(ds4Map);
     React.useEffect(() => {
@@ -261,6 +271,10 @@ export function DongleTestModal({ open, onClose, ds4Map, swMap }) {
     React.useEffect(() => {
         swMapRef.current = swMap;
     }, [swMap]);
+    const paddlesRef = React.useRef(paddles);
+    React.useEffect(() => {
+        paddlesRef.current = paddles;
+    }, [paddles]);
     const { t } = useTranslation();
     const [device, setDevice] = React.useState(null);
     const [identity, setIdentity] = React.useState(null);   // "sinput" | "ds4"
@@ -328,6 +342,8 @@ export function DongleTestModal({ open, onClose, ds4Map, swMap }) {
                     } else {
                         parseDS4(e.data, latestRef.current, ds4MapRef.current);
                     }
+                    // Runs for every identity: the paddle assignment is one and the same
+                    applyPaddleReverse(latestRef.current, paddlesRef.current);
                 } catch { /* ignore partial reports */ }
             };
             deviceRef.current = dev;

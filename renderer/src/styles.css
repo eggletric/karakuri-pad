@@ -156,6 +156,64 @@ input[type="radio"] {
     accent-color: var(--accent);
 }
 
+/* Checkboxes are drawn from scratch rather than tinted with accent-color: the UA box
+   is an opaque filled square that reads as a different material from everything else
+   on these panels. This one is the same dark base + neon border + glow the rest of
+   the UI uses when active. */
+input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    /* Unchecked matches the UA radio sitting next to it (white face, grey rim), so the
+       two controls read as the same material until one is switched on */
+    border: 1px solid #767676;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="checkbox"]:hover:not(:disabled) {
+    border-color: #4f4f4f;
+}
+
+input[type="checkbox"]:checked:hover {
+    border-color: var(--accent-border);
+}
+
+input[type="checkbox"]:checked {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    box-shadow: 0 0 6px rgba(0, 224, 255, 0.4), inset 0 0 5px rgba(0, 224, 255, 0.2);
+}
+
+/* The tick: a rotated L drawn from two borders, so it needs no icon font or SVG */
+input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 3.5px;
+    height: 7.5px;
+    border: solid var(--accent);
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .form-control {
     background: var(--bg-base);
     border: 1px solid var(--border-strong);
@@ -1034,7 +1092,10 @@ textarea.form-control--sm {
     position: relative;
     display: flex;
     align-items: center;
-    padding: 14px 20px 12px;
+    /* The side padding is what sets the spacing between tabs (the 2px gap is invisible,
+       since a tab has no background of its own). It is kept tight because the English
+       labels leave the header barely any slack at the minimum window width. */
+    padding: 14px 12px 12px;
     cursor: pointer;
     font-weight: 700;
     font-size: 12px;
@@ -1047,8 +1108,9 @@ textarea.form-control--sm {
 .chrome-tab::after {
     content: "";
     position: absolute;
-    left: 14px;
-    right: 14px;
+    /* Inset to keep the underline the same amount wider than the label as before */
+    left: 6px;
+    right: 6px;
     bottom: -1px;
     height: 2px;
     border-radius: 2px;
@@ -1331,12 +1393,80 @@ textarea.form-control--sm {
 /* ==============================
    Macro recorder manual modal (mm-*)
    ============================== */
+/* Tab strip in the manual modal's header, in place of a title. It carries no bottom
+   border of its own: the header's own rule is what the active underline sits on. */
+.mm-tabs {
+    display: flex;
+    gap: 4px;
+    /* The negative bottom margin cancels .card-header's 10px padding, so the strip
+       reaches the header's dividing rule and the active underline can sit on it */
+    margin: -2px 0 -10px;
+    align-self: flex-end;
+}
+
+.mm-tab {
+    position: relative;
+    padding: 8px 14px 10px;
+    border: 0;
+    background: none;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.mm-tab:hover {
+    color: var(--text-main);
+}
+
+.mm-tab.is-active {
+    color: var(--accent);
+}
+
+/* The active underline sits on the header's dividing rule */
+.mm-tab.is-active::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(0, 224, 255, 0.55);
+}
+
+.mm-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
 .mm-body {
-    max-height: calc(100vh - 220px);
+    /* Sized so neither tab scrolls at the app's minimum window height (810px content):
+       the taller tab needs about 610px, and the modal chrome outside this box is 65px,
+       so the reserved 170px leaves headroom without pushing the modal off screen. */
+    max-height: calc(100vh - 170px);
     overflow-y: auto;
+    /* Both panes share one grid cell, so the box is always as tall as the taller tab
+       and the modal keeps its size when switching. No hardcoded height to keep in
+       sync with the content or the translations. */
+    display: grid;
+}
+
+.mm-pane {
+    grid-area: 1 / 1;
     display: flex;
     flex-direction: column;
     gap: 14px;
+    min-width: 0;
+}
+
+/* Still occupies the cell (that is what fixes the height) but is not shown, focusable
+   or exposed to assistive tech */
+.mm-pane:not(.is-active) {
+    visibility: hidden;
 }
 
 /* Premise block: what C becomes / what a slot is */
@@ -1559,6 +1689,11 @@ textarea.form-control--sm {
 
 .mm-vib__pulse--long {
     width: 30px;
+}
+
+/* The assignment-mode buzz is about 1s, far longer than any recorder pattern */
+.mm-vib__pulse--xlong {
+    width: 52px;
 }
 
 /* Vibration cue legend */
@@ -3809,4 +3944,137 @@ textarea.form-control--sm {
     color: var(--text-dim);
     word-break: break-all;
     text-align: center;
+}
+
+/* ── GL/GR paddle assignment ─────────────────────────────────────────────── */
+
+/* Picker mode of Procon2View: assignable elements are clickable, the rest dims.
+   The chosen ones reuse .is-on, so they light up the way they will when pressed */
+.p2v--picker .p2v-btn.is-pick,
+.p2v--picker .p2v-stick.is-pick,
+.p2v--picker .p2v-dpad__arm.is-pick,
+.p2v--picker .p2v-hit.is-pick {
+    cursor: pointer;
+}
+
+.p2v--picker .p2v-btn.is-pick:hover,
+.p2v--picker .p2v-stick.is-pick:hover,
+.p2v--picker .p2v-dpad__arm.is-pick:hover {
+    border-color: var(--accent-border);
+}
+
+.p2v--picker .p2v-hit.is-pick:hover .p2v-shoulder-border,
+.p2v--picker .p2v-hit.is-pick:hover .p2v-paddle {
+    stroke: var(--accent-border);
+}
+
+.p2v--picker .p2v-btn.is-pick:focus-visible,
+.p2v--picker .p2v-stick.is-pick:focus-visible,
+.p2v--picker .p2v-dpad__arm.is-pick:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* The shoulders and paddles are SVG groups, whose outline is drawn around the whole
+   bounding box and lands far outside the shape as a big rectangle. Both states are
+   cleared because a focused SVG group can take the ring from either one. The stroke
+   glow below is the focus cue instead. */
+.p2v--picker .p2v-hit.is-pick:focus,
+.p2v--picker .p2v-hit.is-pick:focus-visible {
+    outline: none;
+}
+
+.p2v--picker .p2v-hit.is-pick:focus-visible .p2v-shoulder-border,
+.p2v--picker .p2v-hit.is-pick:focus-visible .p2v-paddle {
+    stroke: var(--accent);
+    filter: drop-shadow(0 0 5px rgba(0, 224, 255, 0.6));
+}
+
+/* C / GL / GR: shown for orientation, but never assignable */
+.p2v--picker .is-locked {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.paddle-assign__hint {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-dim);
+}
+
+.paddle-assign__stage {
+    display: flex;
+    justify-content: center;
+}
+
+.paddle-assign__summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    min-height: 24px;
+    font-size: 12px;
+}
+
+.paddle-assign__summary-label {
+    color: var(--text-dim);
+}
+
+.paddle-assign__none,
+.paddle-btn__none {
+    color: var(--text-faint);
+}
+
+.paddle-assign__chips,
+.paddle-btn__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.paddle-assign__chip,
+.paddle-btn__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    padding: 1px 5px;
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+/* The config-screen button that opens the picker: it doubles as the summary, so it is
+   full width and left-aligned. The chip count is capped at PADDLE_SUMMARY_SLOTS so the
+   row stays a single line; height still grows rather than clipping, because .btn--sm
+   pins a fixed height and anything taller would otherwise be cut off. */
+.paddle-field {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.paddle-btn {
+    width: 100%;
+    /* Fills the field, so GL and GR stay the same height whatever they hold */
+    flex: 1;
+    height: auto;
+    min-height: var(--ctl-h-sm);
+    padding-top: 4px;
+    padding-bottom: 4px;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+/* The "+3" counter is a count, not a button, so it reads as secondary */
+.paddle-btn__chip--more {
+    border-color: var(--border-strong);
+    background: transparent;
+    color: var(--text-dim);
 }

@@ -79,6 +79,9 @@ if (import.meta.env.DEV && typeof window !== "undefined" && !window.pico) {
         usbmode: "procon",
         ds4map: "touchpad,none,none",
         switchmap: "none,none,none",
+        // Set either to null to emulate firmware without the paddle assignment feature
+        glmap: "none",
+        grmap: "none",
         macro: "on",
     };
 
@@ -105,7 +108,12 @@ if (import.meta.env.DEV && typeof window !== "undefined" && !window.pico) {
             return ok("CLOSED");
         },
         getState: () => ok({ open: serialMock.open, path: serialMock.path }),
-        sendWifiConfig: () => ok("CONFIG_SENT"),
+        // Logged rather than discarded: the payload is the only way to check in a browser
+        // what would actually be written to the device
+        sendWifiConfig: (cfg) => {
+            console.log("[MOCK] sendWifiConfig", JSON.stringify(cfg));
+            return ok("CONFIG_SENT");
+        },
         sendLine: (line) => {
             const cmd = String(line || "").trim().toUpperCase();
             if (cmd === "CFG GET") {
@@ -114,7 +122,11 @@ if (import.meta.env.DEV && typeof window !== "undefined" && !window.pico) {
                 serialMock.emit(
                     "[CFG] CURRENT\n" +
                         `mode=${c.mode}\nbtname=${c.btname}\nusbmode=${c.usbmode}\n` +
-                        `ds4map=${c.ds4map}\nswitchmap=${c.switchmap}\nmacro=${c.macro}\n` +
+                        `ds4map=${c.ds4map}\nswitchmap=${c.switchmap}\n` +
+                        (c.glmap === null || c.grmap === null
+                            ? ""
+                            : `glmap=${c.glmap}\ngrmap=${c.grmap}\n`) +
+                        `macro=${c.macro}\n` +
                         "none\n[CFG] CURRENT END\n",
                     window.__mockCfgDelayMs ?? 30
                 );

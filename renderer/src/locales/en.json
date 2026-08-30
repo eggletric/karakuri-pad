@@ -106,7 +106,6 @@
         "usbModeDs4": "DualShock 4",
         "dongleCalibrationNote": "Don't touch the sticks while it connects.",
         "dongleTestButton": "Controller Test",
-        "ds4MapLabel": "C / GL / GR assignment",
         "ds4MapNone": "None",
         "ds4MapTouchpad": "Touchpad",
         "showPassword": "Show password",
@@ -116,6 +115,7 @@
         "waitingDeviceModeTitle": "Retrieving device status…",
         "dongleMacroToggle": "Enable standalone macros",
         "dongleMacroDs4Note": "C can't be assigned while standalone macros are on.",
+        "cMapLabel": "C assignment",
         "usbModeSwitch": "Switch",
         "switchMapCapture": "Capture",
         "usbModeSinputDesc": "For PC / Mac. C/GL/GR, gyro and rumble all work.",
@@ -124,6 +124,13 @@
         "dongleDesc": "Turns a Pro Controller 2 (only) into a USB gamepad. No app needed after flashing; hold the sync button to connect.",
         "usbModeProcon": "Pro Controller",
         "usbModeProconDesc": "For the console — the only mode with gyro and rumble. C/GL/GR are assigned below."
+    },
+    "paddleAssign": {
+        "none": "Not assigned",
+        "clear": "Clear assignment",
+        "title": "Buttons for {{paddle}}",
+        "hint": "Click the buttons {{paddle}} should press. Picking several makes them fire together. The D-Pad, ABXY, L / R / ZL / ZR and the stick clicks can be assigned.",
+        "current": "{{paddle}} assignment"
     },
     "welcome": {
         "tagline": "One Pico W / Pico 2 W to automate your Switch and bring your Pro Controller 2 to PC and Mac.",
@@ -136,7 +143,7 @@
     },
     "macroManual": {
         "button": "How to use",
-        "title": "Standalone Macro Guide",
+        "title": "How to use",
         "introC": "The C button becomes the record/replay control and is never sent to the game.",
         "introSlots": "8 save slots, each holding up to 90 seconds of recording.",
         "hold1s": "hold 1 s",
@@ -148,7 +155,7 @@
         "discardLabel": "discard",
         "whileHolding": "keep held",
         "recordTitle": "Recording",
-        "rec1": "One buzz means armed. C and GL/GR may be pressed in either order.",
+        "rec1": "One buzz means armed. Hold only one paddle: C with both GL and GR is the GL / GR assignment gesture instead.",
         "rec2": "0.5 s after everything is released, one buzz marks the start. The release itself is not recorded.",
         "rec3": "Your input keeps reaching the game while it is being recorded. Recording stops automatically after 90 seconds.",
         "rec4": "Ends the recording. The game input goes neutral, and this C press is neither recorded nor forwarded.",
@@ -167,7 +174,33 @@
         "vib4Desc": "Error (the slot is empty / saving failed)",
         "note1": "Only buttons and sticks are recorded. The gyro is not, and gyro output is paused while recording.",
         "note2": "Game rumble is muted while recording or playing back, so it cannot be confused with the recorder's cues.",
-        "note3": "GL / GR trigger recording and therefore have no slots (they still work as normal buttons)."
+        "note3": "GL / GR trigger recording and therefore have no slots (they still work as normal buttons).",
+        "tabMacro": "Standalone macros",
+        "tabPaddle": "GL / GR assignment"
+    },
+    "paddleManual": {
+        "introGesture": "Hold all three for 1 second to start choosing what GL / GR should press.",
+        "introKeys": "The assignable buttons. Picking several makes them fire together.",
+        "anyButtons": "any buttons",
+        "hold3s": "hold 3s",
+        "assignTitle": "Assign",
+        "step1": "One long buzz starts assignment mode. The game sees a neutral controller throughout.",
+        "step2": "Selection opens 0.5 seconds after everything is released.",
+        "step3": "Hold every button you want until it buzzes (3 seconds) to confirm. Changing which buttons are held restarts the count.",
+        "step4": "Release everything, then press GL or GR to assign it there. One buzz and normal input resumes.",
+        "undoTitle": "Cancel and clear",
+        "cancelLabel": "cancel",
+        "cancel": "Press C while selecting to stop without changing anything. C itself cannot be assigned.",
+        "nothingHeld": "nothing held",
+        "clear": "Press GL or GR with nothing selected to clear that paddle's assignment.",
+        "vib1Label": "One extra-long",
+        "vib1Desc": "Assignment mode started",
+        "vib2Desc": "Button selection confirmed",
+        "vib3Desc": "Assigned / cleared",
+        "vib4Desc": "Cancelled (C pressed)",
+        "vib5Desc": "Timed out (15 seconds without input)",
+        "note1": "This gesture needs standalone macros enabled, because it uses C as a control button. The assignment itself works either way.",
+        "note2": "One assignment applies to every USB mode. It can also be set from the app's settings screen."
     },
     "serial": {
         "title": "Serial Monitor",

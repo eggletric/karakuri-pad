@@ -3,7 +3,10 @@ import { Card } from "./Card";
 
 const MODAL_ANIMATION_MS = 220;
 
-export function Modal({ open, onClose, title, children, footer, size }) {
+// titleContent replaces the heading with arbitrary markup (the manual modal puts its
+// tab strip there). `title` is still used, as the dialog's accessible name, since the
+// heading that would normally provide one is gone.
+export function Modal({ open, onClose, title, titleContent, children, footer, size }) {
     const [isVisible, setIsVisible] = useState(open);
     const [isClosing, setIsClosing] = useState(false);
 
@@ -49,6 +52,7 @@ export function Modal({ open, onClose, title, children, footer, size }) {
             className={`modal ${isClosing ? "is-closing" : ""}`}
             role="dialog"
             aria-modal="true"
+            aria-label={titleContent && title ? title : undefined}
             onClick={handleOverlayClick}
         >
             <div
@@ -62,7 +66,7 @@ export function Modal({ open, onClose, title, children, footer, size }) {
                     footerClassName="modal__card-footer"
                     header={
                         <>
-                            <h3 className="modal__title">{title}</h3>
+                            {titleContent || <h3 className="modal__title">{title}</h3>}
                             {onClose && (
                                 <button
                                     type="button"

@@ -7,6 +7,7 @@ import { Card } from "./Card";
 import { Modal } from "./Modal";
 import { DongleTestModal } from "./DongleTestModal.jsx";
 import { MacroManualModal } from "./MacroManualModal.jsx";
+import { PaddleAssignModal, tokensToCodes, codeLabel, summariseCodes } from "./PaddleAssignModal.jsx";
 import {
     IoEllipse,
     IoEllipseOutline,
@@ -129,16 +130,21 @@ export function ConfigTab() {
     // The dongle's USB identity and, under DS4, the C/GL/GR mapping
     const [usbMode, setUsbMode] = useState("sinput");
     const [ds4MapC, setDs4MapC] = useState("touchpad");
-    const [ds4MapGL, setDs4MapGL] = useState("none");
-    const [ds4MapGR, setDs4MapGR] = useState("none");
     // The dongle macro recorder (FW: macro=on|off). While on, the C button is the recorder's
     // control button and is never forwarded to the host, so its DS4 mapping is meaningless.
     const [dongleMacro, setDongleMacro] = useState(false);
     // The same three assignments for usbmode=switch and usbmode=procon (FW: switchmap).
     // Kept separate from ds4map because the identities have entirely different button sets.
     const [swMapC, setSwMapC] = useState("none");
-    const [swMapGL, setSwMapGL] = useState("none");
-    const [swMapGR, setSwMapGR] = useState("none");
+    // GL/GR are no longer per-identity tokens: the firmware stores one button mask per
+    // paddle that applies in every usbmode (FW: glmap= / grmap=, "none" or "a+up" form).
+    // The ds4map/switchmap GL/GR halves are written as none so an old value cannot
+    // resurface if an assignment is later cleared.
+    const [glMap, setGlMap] = useState("none");
+    const [grMap, setGrMap] = useState("none");
+    // Old firmware answers CFG GET without glmap=/grmap=; the paddle UI is hidden there
+    const [paddleMapSupported, setPaddleMapSupported] = useState(false);
+    const [paddleEditing, setPaddleEditing] = useState(null);   // "GL" | "GR" | null
 
     const [ssid, setSsid] = useState("");
     const [password, setPassword] = useState("");
@@ -301,6 +307,7 @@ export function ConfigTab() {
                     collecting = true;
                     tmp = {
                         mode: "bt", btname: "", usbmode: "sinput", ds4map: "", switchmap: "", macro: "off",
+                        glmap: null, grmap: null,
                         ssid: "", pass: "", ip: "", port: "", gateway: "", subnet: "",
                     };
                     continue;
@@ -320,18 +327,24 @@ export function ConfigTab() {
                         setBtName(tmp.btname || "");
                         setUsbMode(parsedUsbMode);
                         {
-                            const [c = "touchpad", gl = "none", gr = "none"] = (tmp.ds4map || "").split(",");
+                            const [c = "touchpad"] = (tmp.ds4map || "").split(",");
                             const valid = (v, fb) => DS4_MAP_VALUES.some((value) => value === v) ? v : fb;
                             setDs4MapC(valid(c, "touchpad"));
-                            setDs4MapGL(valid(gl, "none"));
-                            setDs4MapGR(valid(gr, "none"));
                         }
                         {
-                            const [c = "none", gl = "none", gr = "none"] = (tmp.switchmap || "").split(",");
+                            const [c = "none"] = (tmp.switchmap || "").split(",");
                             const valid = (v, fb) => SWITCH_MAP_VALUES.some((value) => value === v) ? v : fb;
                             setSwMapC(valid(c, "none"));
-                            setSwMapGL(valid(gl, "none"));
-                            setSwMapGR(valid(gr, "none"));
+                        }
+                        {
+                            // Absent (null) means the firmware predates the feature. The
+                            // device is also the other writer here -- the C+GL+GR gesture
+                            // saves straight to flash -- so this re-read is what keeps the
+                            // form in step with assignments made on the controller.
+                            const supported = tmp.glmap !== null || tmp.grmap !== null;
+                            setPaddleMapSupported(supported);
+                            setGlMap(supported ? (tmp.glmap || "none") : "none");
+                            setGrMap(supported ? (tmp.grmap || "none") : "none");
                         }
                         setDongleMacro(tmp.macro === "on");
                         setSsid(tmp.ssid || "");
@@ -365,6 +378,10 @@ export function ConfigTab() {
                         tmp.ds4map = trimmed.substring(7).toLowerCase();
                     } else if (trimmed.startsWith("switchmap=")) {
                         tmp.switchmap = trimmed.substring(10).toLowerCase();
+                    } else if (trimmed.startsWith("glmap=")) {
+                        tmp.glmap = trimmed.substring(6).toLowerCase();
+                    } else if (trimmed.startsWith("grmap=")) {
+                        tmp.grmap = trimmed.substring(6).toLowerCase();
                     } else if (trimmed.startsWith("macro=")) {
                         tmp.macro = trimmed.substring(6).toLowerCase();
                     } else if (trimmed.startsWith("ssid=")) {
@@ -524,8 +541,12 @@ export function ConfigTab() {
                 mode,
                 btname: btName,
                 usbmode: usbMode,
-                ds4map: `${ds4MapC},${ds4MapGL},${ds4MapGR}`,
-                switchmap: `${swMapC},${swMapGL},${swMapGR}`,
+                // GL/GR are forced to none in the legacy tokens: glmap/grmap own the
+                // paddles now, and a leftover token would come back the moment an
+                // assignment is cleared
+                ds4map: `${ds4MapC},none,none`,
+                switchmap: `${swMapC},none,none`,
+                ...(paddleMapSupported ? { glmap: glMap, grmap: grMap } : {}),
                 macro: dongleMacro ? "on" : "off",
                 ssid,
                 password,
@@ -632,8 +653,20 @@ export function ConfigTab() {
             <DongleTestModal
                 open={showDongleTest}
                 onClose={() => setShowDongleTest(false)}
-                ds4Map={{ c: ds4MapC, gl: ds4MapGL, gr: ds4MapGR }}
-                swMap={{ c: swMapC, gl: swMapGL, gr: swMapGR }}
+                ds4Map={{ c: ds4MapC }}
+                swMap={{ c: swMapC }}
+                paddles={{ gl: tokensToCodes(glMap), gr: tokensToCodes(grMap) }}
+            />
+            <PaddleAssignModal
+                open={paddleEditing !== null}
+                paddle={paddleEditing || "GL"}
+                value={paddleEditing === "GR" ? grMap : glMap}
+                onCancel={() => setPaddleEditing(null)}
+                onApply={(tokens) => {
+                    if (paddleEditing === "GR") setGrMap(tokens);
+                    else setGlMap(tokens);
+                    setPaddleEditing(null);
+                }}
             />
             <MacroManualModal
                 open={showMacroManual}
@@ -906,71 +939,103 @@ export function ConfigTab() {
                                 </div>
                                 {(usbMode === "switch" || usbMode === "procon") && (
                                     <div className="cfg-field" style={{ marginBottom: 15 }}>
-                                        <label className="cfg-label">
-                                            {t("config.ds4MapLabel")}
-                                        </label>
-                                        {/* Same rule as under DS4: while the macro recorder is on, C is its
-                                            control button and never reaches the host */}
-                                        {dongleMacro && (
-                                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.6, marginBottom: 6 }}>
+                                        {/* Same rule as under DS4: while the macro recorder is on, C is its control
+                                            button and never reaches the host, so only the note is shown */}
+                                        {dongleMacro ? (
+                                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.6 }}>
                                                 {t("config.dongleMacroDs4Note")}
                                             </div>
-                                        )}
-                                        <div style={{ display: "flex", gap: 8 }}>
-                                            {[
-                                                ...(dongleMacro ? [] : [{ key: "C", value: swMapC, set: setSwMapC }]),
-                                                { key: "GL", value: swMapGL, set: setSwMapGL },
-                                                { key: "GR", value: swMapGR, set: setSwMapGR },
-                                            ].map(({ key, value, set }) => (
-                                                <div key={key} style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 2 }}>
-                                                        {key}
-                                                    </div>
-                                                    <CustomSelect
-                                                        dense
-                                                        dropUp
-                                                        value={value}
-                                                        onChange={(v) => set(v)}
-                                                        options={switchMapSelectOptions}
-                                                        aria-label={`${key} button mapping`}
-                                                    />
+                                        ) : (
+                                            <div style={{ maxWidth: 180 }}>
+                                                <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 2 }}>
+                                                    {t("config.cMapLabel")}
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <CustomSelect
+                                                    dense
+                                                    dropUp
+                                                    value={swMapC}
+                                                    onChange={setSwMapC}
+                                                    options={switchMapSelectOptions}
+                                                    aria-label="C button mapping"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 {usbMode === "ds4" && (
                                     <div className="cfg-field" style={{ marginBottom: 15 }}>
-                                        <label className="cfg-label">
-                                            {t("config.ds4MapLabel")}
-                                        </label>
-                                        {/* While the macro recorder is on, C is the recorder's control button and its
-                                            mapping would never take effect, so the C select is hidden */}
-                                        {dongleMacro && (
-                                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.6, marginBottom: 6 }}>
+                                        {/* While the macro recorder is on, C is the recorder's control button and
+                                            its mapping would never take effect, so only the note is shown */}
+                                        {dongleMacro ? (
+                                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.6 }}>
                                                 {t("config.dongleMacroDs4Note")}
                                             </div>
+                                        ) : (
+                                            <div style={{ maxWidth: 180 }}>
+                                                <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 2 }}>
+                                                    {t("config.cMapLabel")}
+                                                </div>
+                                                <CustomSelect
+                                                    dense
+                                                    dropUp
+                                                    value={ds4MapC}
+                                                    onChange={setDs4MapC}
+                                                    options={ds4MapSelectOptions}
+                                                    aria-label="C button mapping"
+                                                />
+                                            </div>
                                         )}
+                                    </div>
+                                )}
+                                {/* GL/GR: one assignment per paddle, shared by every usbmode
+                                    (the firmware stores a button mask, not a per-identity token),
+                                    so this sits outside the ds4 / switch blocks above and shows
+                                    for sinput too. Hidden on firmware that has no glmap/grmap. */}
+                                {paddleMapSupported && (
+                                    <div className="cfg-field" style={{ marginBottom: 15 }}>
                                         <div style={{ display: "flex", gap: 8 }}>
                                             {[
-                                                ...(dongleMacro ? [] : [{ key: "C", value: ds4MapC, set: setDs4MapC }]),
-                                                { key: "GL", value: ds4MapGL, set: setDs4MapGL },
-                                                { key: "GR", value: ds4MapGR, set: setDs4MapGR },
-                                            ].map(({ key, value, set }) => (
-                                                <div key={key} style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 2 }}>
-                                                        {key}
+                                                { key: "GL", value: glMap },
+                                                { key: "GR", value: grMap },
+                                            ].map(({ key, value }) => {
+                                                const codes = tokensToCodes(value);
+                                                // Only a fixed number of slots, so the row cannot grow past one line.
+                                                // The full list is on the button's tooltip and in the modal.
+                                                const { shown, overflow } = summariseCodes(codes);
+                                                return (
+                                                    <div key={key} className="paddle-field">
+                                                        <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 2 }}>
+                                                            {t("paddleAssign.current", { paddle: key })}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn--sm paddle-btn"
+                                                            onClick={() => setPaddleEditing(key)}
+                                                            aria-label={`${key} button assignment`}
+                                                            title={codes.length ? codes.map(codeLabel).join(" + ") : undefined}
+                                                        >
+                                                            {codes.length === 0 ? (
+                                                                <span className="paddle-btn__none">
+                                                                    {t("paddleAssign.none")}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="paddle-btn__chips">
+                                                                    {shown.map((code) => (
+                                                                        <span key={code} className="paddle-btn__chip">
+                                                                            {codeLabel(code)}
+                                                                        </span>
+                                                                    ))}
+                                                                    {overflow > 0 && (
+                                                                        <span className="paddle-btn__chip paddle-btn__chip--more">
+                                                                            {`+${overflow}`}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </button>
                                                     </div>
-                                                    <CustomSelect
-                                                        dense
-                                                        dropUp
-                                                        value={value}
-                                                        onChange={(v) => set(v)}
-                                                        options={ds4MapSelectOptions}
-                                                        aria-label={`${key} button mapping`}
-                                                    />
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

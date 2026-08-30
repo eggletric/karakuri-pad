@@ -2369,6 +2369,8 @@ ipcMain.handle("pico-serial-send-config", async (_event, cfg) => {
         usbmode = "sinput",
         ds4map = "",
         switchmap = "",
+        glmap = "",
+        grmap = "",
         macro = "off",
         ssid = "",
         password = "",
@@ -2418,6 +2420,11 @@ ipcMain.handle("pico-serial-send-config", async (_event, cfg) => {
         await writeLine(`macro=${macro === "on" ? "on" : "off"}`);
         if (ds4map) await writeLine(`ds4map=${ds4map}`);
         if (switchmap) await writeLine(`switchmap=${switchmap}`);
+        // The GL/GR assignment (a button mask shared by every identity). Omitted entirely
+        // for firmware that does not answer CFG GET with glmap=, where the keys would only
+        // draw an "unknown line" warning
+        if (glmap) await writeLine(`glmap=${glmap}`);
+        if (grmap) await writeLine(`grmap=${grmap}`);
     }
     await writeLine("CFG END");
 

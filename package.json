@@ -1,6 +1,6 @@
 {
     "name": "karakuri-pad",
-    "version": "1.0.5",
+    "version": "1.1.0",
     "main": "electron/main.js",
     "scripts": {
         "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
@@ -16,7 +16,8 @@
         "dist:win": "yarn dist:build && yarn prune:native win32 && electron-builder --win --publish never",
         "dist:linux": "yarn dist:build && yarn prune:native linux && electron-builder --linux --publish never",
         "release": "yarn dist:build && electron-builder --publish always",
-        "prune:native": "node scripts/prune-native.mjs"
+        "prune:native": "node scripts/prune-native.mjs",
+        "shots:manual": "node scripts/gen-manual-shots.mjs"
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^5.2.0",
