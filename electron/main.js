@@ -78,6 +78,9 @@ const MAIN_MESSAGES = {
         menuManual: "マニュアル",
         menuIssues: "不具合を報告",
         menuReleases: "リリースノート",
+        menuWindow: "ウィンドウ",
+        menuMinimize: "最小化",
+        menuClose: "閉じる",
     },
     en: {
         hidLinkZadig: "WinUSB setup on Windows (Zadig)",
@@ -129,6 +132,9 @@ const MAIN_MESSAGES = {
         menuManual: "Manuals",
         menuIssues: "Report an Issue",
         menuReleases: "Release Notes",
+        menuWindow: "Window",
+        menuMinimize: "Minimize",
+        menuClose: "Close",
     },
 };
 
@@ -392,11 +398,20 @@ function installAppMenu() {
             helpMenu,
         ]));
     } else {
-        // Windows/Linux run a normal title bar, so the menu bar has a home. The same
-        // minimal set as macOS: Edit for the shortcuts, Window, and Help (About + links)
+        // Windows/Linux run a normal title bar, so the menu bar has a home. Edit is dropped
+        // here: unlike macOS, the clipboard shortcuts are handled natively by Chromium and
+        // do not need a menu entry, so the bar is left with just Window and Help.
+        // { role: "windowMenu" } would carry Electron's own English labels, so the items are
+        // spelled out and their labels overridden with the language picked in the app.
         Menu.setApplicationMenu(Menu.buildFromTemplate([
-            { role: "editMenu" },
-            { role: "windowMenu" },
+            {
+                label: tr("menuWindow"),
+                submenu: [
+                    { role: "minimize", label: tr("menuMinimize") },
+                    { type: "separator" },
+                    { role: "close", label: tr("menuClose") },
+                ],
+            },
             helpMenu,
         ]));
     }
