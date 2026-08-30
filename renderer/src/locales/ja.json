@@ -241,7 +241,10 @@
     "capture": {
         "deviceError": "カメラデバイスの取得に失敗しました。",
         "streamError": "映像の取得に失敗しました。OSのカメラ権限を確認してください。",
-        "selectDevice": "カメラを選択"
+        "selectDevice": "カメラを選択",
+        "defaultDevice": "既定のカメラ",
+        "noDevice": "カメラデバイスが見つかりません。キャプチャーボードの接続を確認してください。",
+        "streamBusy": "映像を取得できませんでした。他のアプリがキャプチャーボードを使用していないか確認してください。"
     },
     "install": {
         "electronOnly": "最新ファームウェアの取得は Electron 環境でのみ動作します。",

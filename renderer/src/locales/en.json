@@ -241,7 +241,10 @@
     "capture": {
         "deviceError": "Failed to get camera devices.",
         "streamError": "Failed to get video. Check the OS camera permission.",
-        "selectDevice": "Select camera"
+        "selectDevice": "Select camera",
+        "defaultDevice": "Default camera",
+        "noDevice": "No camera device found. Check that the capture card is connected.",
+        "streamBusy": "Could not get video. Check that no other app is using the capture card."
     },
     "install": {
         "electronOnly": "Fetching the latest firmware only works in the Electron app.",
