@@ -502,8 +502,12 @@ export function ConfigTab() {
             setBtName("");
             setUsbMode("sinput");
             setDs4MapC("touchpad");
-            setDs4MapGL("none");
-            setDs4MapGR("none");
+            setSwMapC("none");
+            setGlMap("none");
+            setGrMap("none");
+            setPaddleMapSupported(false);
+            setPaddleEditing(null);
+            setDongleMacro(false);
             setSsid("");
             setPassword("");
             setIp("");
