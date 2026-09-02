@@ -3659,6 +3659,12 @@ textarea.form-control--sm {
     color: var(--text-dim);
 }
 
+/* The generation of the board that is plugged in right now */
+.install-version--active {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
 /* A general-purpose loading spinner (small enough to sit inside a button) */
 .spinner {
     display: inline-block;

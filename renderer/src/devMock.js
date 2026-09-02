@@ -143,6 +143,8 @@ if (import.meta.env.DEV && typeof window !== "undefined" && !window.pico) {
         onClosed: () => () => {},
     };
 
+    // Stands in for the on-disk cache under userData/firmware
+    const mockFirmwareCache = {};
     window.picoFirmware = {
         detect: () =>
             ok({
@@ -168,13 +170,30 @@ if (import.meta.env.DEV && typeof window !== "undefined" && !window.pico) {
         fetchLatest: () =>
             ok({
                 version: "v0.9.9",
-                downloadUrl: "https://example.invalid/fw.uf2",
-                assetName: "karakuri-firmware-pico2w.uf2",
-                family: "rp2350",
+                assets: {
+                    rp2040: { assetName: "karakuri-firmware-picow.uf2", downloadUrl: "https://example.invalid/picow.uf2" },
+                    rp2350: { assetName: "karakuri-firmware-pico2w.uf2", downloadUrl: "https://example.invalid/pico2w.uf2" },
+                },
             }),
-        downloadFirmware: () => ok({ dataBase64: "TU9DSw==" }),
-        loadLocalFirmware: () =>
-            ok({ canceled: false, dataBase64: "TU9DSw==", fileName: "mock.uf2", family: "rp2350" }),
+        downloadFirmware: ({ family, version }) => {
+            mockFirmwareCache[family] = {
+                version,
+                source: "release",
+                fileName: `karakuri-firmware-${family}.uf2`,
+                size: 4,
+                savedAt: new Date().toISOString(),
+            };
+            return ok({ family, entry: mockFirmwareCache[family] });
+        },
+        loadLocalFirmware: () => {
+            mockFirmwareCache.rp2350 = { version: "", source: "local", fileName: "mock.uf2", size: 4, savedAt: new Date().toISOString() };
+            return ok({ canceled: false, family: "rp2350", fileName: "mock.uf2", entry: mockFirmwareCache.rp2350 });
+        },
+        listCache: () => ok({ ...mockFirmwareCache }),
+        deleteCache: ({ family } = {}) => {
+            for (const f of family ? [family] : Object.keys(mockFirmwareCache)) delete mockFirmwareCache[f];
+            return ok({ status: "OK" });
+        },
         install: () => ok({ status: "OK", path: "/Volumes/RP2350/fw.uf2" }),
     };
 

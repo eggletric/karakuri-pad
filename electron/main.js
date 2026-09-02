@@ -58,7 +58,7 @@ const MAIN_MESSAGES = {
         uf2Invalid: "UF2 として認識できないファイルです",
         uf2UnsupportedBoard: "対応していないボード向けの UF2 です",
         bootselDriveMissing: "BOOTSEL のドライブが見つかりません (RPI-RP2 / RP2350 ラベルのストレージをマウントしてください)",
-        firmwareDataEmpty: "ファームウェアデータが空です",
+        firmwareCacheMissing: "保存済みのファームウェアがありません。先に最新版を確認して取得してください。",
         uf2InvalidData: "UF2 として認識できないデータです",
         uf2BoardMismatch: "ボードと UF2 が一致しません（接続中: {board} / UF2: {uf2}）。\nダウンロードしたファイルが対象ボード向けか確認してください。",
         writeTimeout: "書き込みがタイムアウトしました。デバイスを差し直してください。",
@@ -112,7 +112,7 @@ const MAIN_MESSAGES = {
         uf2Invalid: "This file is not a valid UF2",
         uf2UnsupportedBoard: "This UF2 targets an unsupported board",
         bootselDriveMissing: "BOOTSEL drive not found (mount the storage labeled RPI-RP2 / RP2350)",
-        firmwareDataEmpty: "Firmware data is empty",
+        firmwareCacheMissing: "No firmware is saved yet. Check for the latest firmware first to download it.",
         uf2InvalidData: "This data is not a valid UF2",
         uf2BoardMismatch: "Board and UF2 do not match (connected: {board} / UF2: {uf2}).\nMake sure the downloaded file targets this board.",
         writeTimeout: "Write timed out. Replug the device.",
@@ -2901,8 +2901,96 @@ ipcMain.handle("pico-firmware-detect", async () => {
     return detectRpiRp2Mount();
 });
 
-async function fetchLatestFirmwareInfo(family = "") {
-    const assetName = firmwareAssetNameFor(family);
+// ===== Firmware cache =====
+// One UF2 per board generation lives under userData/firmware, next to a manifest that records
+// which release each file came from. The renderer only ever sees the manifest; the bytes stay
+// on the main side, so nothing megabyte-sized travels over IPC or sits in localStorage.
+function firmwareCacheDir() {
+    return path.join(app.getPath("userData"), "firmware");
+}
+
+function firmwareCacheFile(family) {
+    return path.join(firmwareCacheDir(), `${family}.uf2`);
+}
+
+function firmwareManifestPath() {
+    return path.join(firmwareCacheDir(), "manifest.json");
+}
+
+// A family coming from the renderer becomes part of a file name, so anything unknown is rejected
+function assertKnownFamily(family) {
+    const f = String(family || "");
+    if (!FIRMWARE_ASSET_NAMES[f]) {
+        throw new Error(tr("uf2UnsupportedBoard"));
+    }
+    return f;
+}
+
+async function readFirmwareManifest() {
+    try {
+        const parsed = JSON.parse(await fs.promises.readFile(firmwareManifestPath(), "utf8"));
+        return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+async function writeFileAtomic(dest, data) {
+    await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+    const tmp = `${dest}.tmp`;
+    await fs.promises.writeFile(tmp, data);
+    await fs.promises.rename(tmp, dest);
+}
+
+// Manifest entries whose UF2 has gone missing are skipped, so the renderer never offers a file that is not there
+async function listFirmwareCache() {
+    const manifest = await readFirmwareManifest();
+    const entries = {};
+    for (const family of Object.keys(FIRMWARE_ASSET_NAMES)) {
+        const entry = manifest[family];
+        if (!entry || typeof entry !== "object") continue;
+        try {
+            const stat = await fs.promises.stat(firmwareCacheFile(family));
+            entries[family] = {
+                version: String(entry.version || ""),
+                source: entry.source === "local" ? "local" : "release",
+                fileName: String(entry.fileName || ""),
+                size: stat.size,
+                savedAt: entry.savedAt || null,
+            };
+        } catch {
+            // The file is gone; the manifest entry is stale
+        }
+    }
+    return entries;
+}
+
+async function saveFirmwareToCache(family, buf, { version = "", source = "release", fileName = "" } = {}) {
+    await writeFileAtomic(firmwareCacheFile(family), buf);
+    const manifest = await readFirmwareManifest();
+    manifest[family] = {
+        version: String(version).slice(0, 100),
+        source,
+        fileName: path.basename(String(fileName)).slice(0, 200),
+        savedAt: new Date().toISOString(),
+    };
+    await writeFileAtomic(firmwareManifestPath(), JSON.stringify(manifest, null, 2));
+    return (await listFirmwareCache())[family] || null;
+}
+
+async function deleteFirmwareCache(family = "") {
+    const families = family ? [assertKnownFamily(family)] : Object.keys(FIRMWARE_ASSET_NAMES);
+    const manifest = await readFirmwareManifest();
+    for (const f of families) {
+        await fs.promises.rm(firmwareCacheFile(f), { force: true });
+        delete manifest[f];
+    }
+    await writeFileAtomic(firmwareManifestPath(), JSON.stringify(manifest, null, 2));
+}
+
+// Only the release tag is needed to know whether the cache is behind, so this never looks at
+// which board (if any) is plugged in. The asset URLs for every generation come back with it.
+async function fetchLatestFirmwareInfo() {
     try {
         const res = await fetch(RELEASE_LATEST_URL, {
             method: "HEAD",
@@ -2915,19 +3003,22 @@ async function fetchLatestFirmwareInfo(family = "") {
 
         const location = res.headers.get("location") || "";
         const version = location.match(/\/tag\/([^\s/]+)/)?.[1] || "";
-        if (!version || !assetName) {
+        if (!version) {
             throw new Error(tr("latestReleaseNotFound"));
         }
 
-        const downloadUrl = `${FIRMWARE_DOWNLOAD_PREFIX}${version}/${assetName}`;
-        return { version, downloadUrl, assetName, family };
+        const assets = {};
+        for (const [family, assetName] of Object.entries(FIRMWARE_ASSET_NAMES)) {
+            assets[family] = { assetName, downloadUrl: `${FIRMWARE_DOWNLOAD_PREFIX}${version}/${assetName}` };
+        }
+        return { version, assets };
     } catch (err) {
         console.warn("Failed to fetch latest firmware info:", err);
-        return { version: "", downloadUrl: "", assetName, family, error: err?.message || String(err) };
+        return { version: "", assets: {}, error: err?.message || String(err) };
     }
 }
 
-async function downloadFirmwareToBase64(downloadUrl) {
+async function downloadFirmware(downloadUrl) {
     if (!downloadUrl) {
         throw new Error(tr("downloadUrlMissing"));
     }
@@ -2937,11 +3028,10 @@ async function downloadFirmwareToBase64(downloadUrl) {
         throw new Error(tr("firmwareDownloadFailed", { status: resp.status }));
     }
 
-    const buffer = await resp.arrayBuffer();
-    return Buffer.from(buffer).toString("base64");
+    return Buffer.from(await resp.arrayBuffer());
 }
 
-// Pick a local UF2 file and return it as data for the cache.
+// Pick a local UF2 file and put it in the cache under the generation it targets.
 // Used for pre-release development builds and for manual installation while offline.
 ipcMain.handle("pico-firmware-load-local", async () => {
     const result = await dialog.showOpenDialog({
@@ -2956,7 +3046,7 @@ ipcMain.handle("pico-firmware-load-local", async () => {
     const filePath = result.filePaths[0];
     const buf = await fs.promises.readFile(filePath);
 
-    // Check that it is a valid UF2 and which board it targets, and return that
+    // Check that it is a valid UF2 and which board it targets
     const { family, valid } = detectUf2Family(buf);
     if (!valid) {
         throw new Error(tr("uf2Invalid"));
@@ -2965,21 +3055,27 @@ ipcMain.handle("pico-firmware-load-local", async () => {
         throw new Error(tr("uf2UnsupportedBoard"));
     }
 
-    return {
-        canceled: false,
-        dataBase64: buf.toString("base64"),
-        fileName: path.basename(filePath),
-        family,
-    };
+    const fileName = path.basename(filePath);
+    const entry = await saveFirmwareToCache(family, buf, { version: "", source: "local", fileName });
+    return { canceled: false, family, fileName, entry };
 });
 
-ipcMain.handle("pico-firmware-latest", async (_event, payload = {}) => {
-    // With no generation passed in, decide from whichever board is currently plugged in
-    const family = payload?.family || (await detectRpiRp2Mount()).family || "";
-    return fetchLatestFirmwareInfo(family);
+ipcMain.handle("pico-firmware-cache-list", async () => {
+    return listFirmwareCache();
+});
+
+ipcMain.handle("pico-firmware-cache-delete", async (_event, payload = {}) => {
+    await deleteFirmwareCache(payload?.family || "");
+    return { status: "OK" };
+});
+
+ipcMain.handle("pico-firmware-latest", async () => {
+    return fetchLatestFirmwareInfo();
 });
 
 ipcMain.handle("pico-firmware-download", async (_event, payload = {}) => {
+    const family = assertKnownFamily(payload?.family);
+    const version = String(payload?.version || "");
     const downloadUrl = String(payload?.downloadUrl || "");
     if (!downloadUrl) {
         throw new Error(tr("downloadUrlMissing"));
@@ -2989,8 +3085,23 @@ ipcMain.handle("pico-firmware-download", async (_event, payload = {}) => {
         console.warn("[UF2] download URL not allowed:", downloadUrl);
         throw new Error(tr("downloadUrlNotAllowed"));
     }
-    const dataBase64 = await downloadFirmwareToBase64(downloadUrl);
-    return { dataBase64 };
+
+    const buf = await downloadFirmware(downloadUrl);
+    // A wrong or truncated asset is rejected here rather than at install time
+    const uf2 = detectUf2Family(buf);
+    if (!uf2.valid) {
+        throw new Error(tr("uf2InvalidData"));
+    }
+    if (uf2.family !== family) {
+        throw new Error(tr("uf2BoardMismatch", { board: family, uf2: uf2.family || "?" }));
+    }
+
+    const entry = await saveFirmwareToCache(family, buf, {
+        version,
+        source: "release",
+        fileName: firmwareAssetNameFor(family),
+    });
+    return { family, entry };
 });
 
 // Remounts the BOOTSEL volume right before writing (macOS only, best effort).
@@ -3058,9 +3169,9 @@ ipcMain.handle("pico-firmware-write", async (_event, payload = {}) => {
     }
     firmwareWriting = true;
     try {
-        const dataBase64 = String(payload?.dataBase64 || "");
         const detection = await detectRpiRp2Mount();
-        const family = payload?.family || detection.family || "";
+        // The detected board wins; the renderer's family only fills in when detection could not tell
+        const family = detection.family || String(payload?.family || "");
 
         // The write target is limited to "a drive we can currently detect".
         // The renderer must not be able to hand us an arbitrary path and have megabytes written there.
@@ -3093,11 +3204,15 @@ ipcMain.handle("pico-firmware-write", async (_event, payload = {}) => {
         if (!targetMount) {
             throw new Error(tr("bootselDriveMissing"));
         }
-        if (!dataBase64) {
-            throw new Error(tr("firmwareDataEmpty"));
-        }
 
-        const buf = Buffer.from(dataBase64, "base64");
+        // The bytes come from the on-disk cache, never from the renderer
+        let buf;
+        try {
+            buf = await fs.promises.readFile(firmwareCacheFile(assertKnownFamily(family)));
+        } catch (err) {
+            if (err?.code !== "ENOENT") throw err;
+            throw new Error(tr("firmwareCacheMissing"));
+        }
 
         // The bootloader silently ignores a UF2 of the wrong generation, so the copy succeeds
         // while the firmware stays put. Rejecting it here prevents a false success report.

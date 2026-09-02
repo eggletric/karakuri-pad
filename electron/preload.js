@@ -90,9 +90,12 @@ contextBridge.exposeInMainWorld("picoSerial", {
 
 contextBridge.exposeInMainWorld("picoFirmware", {
     detect: () => ipcRenderer.invoke("pico-firmware-detect"),
-    fetchLatest: (payload) => ipcRenderer.invoke("pico-firmware-latest", payload),
+    fetchLatest: () => ipcRenderer.invoke("pico-firmware-latest"),
     downloadFirmware: (payload) => ipcRenderer.invoke("pico-firmware-download", payload),
     loadLocalFirmware: () => ipcRenderer.invoke("pico-firmware-load-local"),
+    // The UF2 files stay on disk in userData; the renderer only sees the manifest
+    listCache: () => ipcRenderer.invoke("pico-firmware-cache-list"),
+    deleteCache: (payload) => ipcRenderer.invoke("pico-firmware-cache-delete", payload),
     install: (payload) => ipcRenderer.invoke("pico-firmware-write", payload),
 });
 
